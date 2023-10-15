@@ -193,11 +193,23 @@ ex. docker run Image:Tag => 이미지 다운로드(pull)할 필요없이 사용 
 
 3. 컨테이너 실행
 
-✔️ 아래 명령어로 컨테이너 실행하면 root ID로 접속되고
+✔️ 아래 명령어로 컨테이너 실행하면, mysql의 경우 root ID로 접속되고 host name은 container ID로 설정됨. 컨테이너에 접속하는 것은 Guset OS를 쓰는 것과 비슷
 
-`docker exec -it [CONTAINER NAMES] [bash]`
+`docker exec -it [CONTAINER NAMES] [실행할 command]`
 `docker exec -it mariadb /bin/bash`
 
-8:18
+`root@[CONATINER ID]:/# [입력 대기]` => 이 상태가 컨테이너 실행 상태
+
+✔️ maria db 접속
+
+root@[CONATINER ID]:/# `mysql -uroot -p -h127.0.0.1` => `-p`는 password 하지만 없음. `-h`는 host 주소
+
+root@[CONATINER ID]:/# `(enter)` => password 없기에 그냥 엔터
+
+✔️ maria db 접속 완료
+
+MariaDB [(none)] > `show databases;`
+
+9:20
 
 ## 4. Docker 이미지 생성과 Public registry에 Push
