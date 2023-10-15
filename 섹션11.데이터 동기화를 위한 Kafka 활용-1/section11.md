@@ -282,6 +282,8 @@ mysql > flush privileges;   //위의 비밀번호 반영
 
 ## 5. Orders Microservice에서 MariaDB 연동
 
+-요기부터 다시
+
 ## 6. Kafka Connect 설치 -1
 
 ## 7. Kafka Connect 설치 -2
