@@ -208,8 +208,150 @@ root@[CONATINER ID]:/# `(enter)` => password 없기에 그냥 엔터
 
 ✔️ maria db 접속 완료
 
-MariaDB [(none)] > `show databases;`
+MariaDB [(none)] > `show databases;` => 존재하는 databases 확인
+MariaDB [(none)] > `create database mydb;` => mydb라는 database 생성(table은 생성X)
+MariaDB [(none)] > `exit`
+root@[CONATINER ID]:/# `exit`
 
-9:20
+- host PC 상태
+
+`docker ps -a` => container 확인
+
+✔️ Host PC에서 접근한다고 가정 => `Workbench` 사용
+
+- Connection Name을 `Docker -mariadb`, HostName을 `127.0.0.1`, Port를 `13306`로 test connection
+
+- Host PC에서 접근할 때에는 `docker ps -a`에서 본 것과 같이 13306으로 접근 -> 컨테이너의 3306과 포트포워딩
+
+- mydb라는 데이터베이스 확인 가능
+
+✔️ 컨테이너 종료
+
+`docker stop [CONTAINER NAMES]`
+`docker stop mariadb`
+
+- 이후 `docker ps -a`하면 STATUS Exited로 나타남
+
+✔️ 컨테이너 삭제
+
+`docker container rm mariadb`
+
+- 이 경우 컨테이너 내의 모든 데이터가 삭제되므로 데이터가 필요한 경우 컨테이너 외부에 저장해야함
 
 ## 4. Docker 이미지 생성과 Public registry에 Push
+
+1. Docker 이미지 생성 1 - Dockerfile 생성
+
+✔️ user-service는 Java가 설치되어있어야 사용가능하므로 Java 기반의 Docker 이미지 파일 생성 => `FROM`
+
+- `VOLUME`은 가상 저장소
+
+- `COPY`는 Host directory에 존재하는 (앞의) 파일(디렉토리)를 container 내부의 (뒤의) 파일(디렉토리)로 복사
+
+- `ENTRYPOINT`는 어떤 명령으로 도커를 실행할지 결정하는 실행 커맨드. 아래 예제에서는 'java'라는 명령으로 '-jar' 옵션으로 'users-service.jar'를 실행. 두번째 파라미터에는 필요한 경우 추가 명령 넣으면 됨. 현재는 안 써도 됨
+
+```
+FROM openjdk:8-jdk-alpine
+
+VOLUME /tmp
+
+COPY target/users-ws-0.1.jar users-service.jar
+
+ENTRYPOINT ["java",
+"-Djava.security.egd=file:/dev/./urandom",
+"-jar",
+"users-service.jar"]
+
+```
+
+2. Docker 이미지 생성 2 - 이미지 생성 및 업로드/불러오기
+
+✔️ `$ docker build -t [저장할 위치]/[IMAGE NAME:TAG]`
+
+`$ docker build -t edowon0623/users-service:1.0 .`
+
+- 실제 이미지로 생성. 이미지 이름은 'seoyeon/users-service"1.0'
+
+- 맨 뒤의 . 은 현재 디렉토리의 도커파일로 이미지를 생성하라는 의미
+
+✔️ `$ docker push [docker hub 계정]/[IMAGE NAME:TAG]`
+
+- `$ docker push edowon0623/user-service:1.0`
+
+- docker hub에 이미지 업로드
+
+✔️ `$ docker pull [docker hub 계정]/[IMAGE NAME:TAG]`
+
+- `$ docker pull edowon0623/user-service:1.`
+
+- docker hub에서 이미지 가져오기
+
+3. 실습
+
+✔️ Dockerfile 작성
+
+- user-service > Dockerfile 폴더 생성 (target 폴더와 같은 depth)
+
+- Docker Hub에서 openjdk 검색 후 17-ea-jdk-slim 버전 사용
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY target/user-service-1.0.jar UserService.jar
+ENTRYPOINT ["java","-jar","UserService.jar"]
+```
+
+✔️ 이미지 생성
+
+- 해당 디렉토리로 이동 후 재빌드
+
+`cd ../user-service`
+
+`la -al` => target과 Dockerfile이 모두 존재
+
+`mvn clean compile package -DskipTests=true` => 빌드: 필요한 jar 파일까지 생성. 이때 test 코드는 스킵(가끔 오류 발생할 수 있기 때문)
+
+`ls -l ./target` => 생성된 user-service-0.0.1-SNAPSHOT.jar과 user-service-0.0.1-SNAPSHOT.jar.original 존재
+
+jar 파일 이름 수정
+`pom.xml`
+
+```
+<version>1.0</version>
+```
+
+다시 빌드 `mvn clean compile package -DskipTests=true`
+
+`ls -l ./target` => 생성된 user-service-1.0.jar과 user-service-1.0.jar.original 존재
+
+`docker build --tag edowon0623/user-service:1.0 .`로 이미지 생성
+
+`docker image ls` 하면 edowon0623/user-service 존재
+
+✔️ Docker Hub에 업로드
+
+`docker push edowon0623/user-service:1.0`
+
+- 이때 push 다음에는 [docker hub명]/[이미지명:버전] 이어야 함
+
+✔️ 이미지 삭제 => Docker Hub에서 이미지를 pull 받는 것 확인
+
+`docker rmi [IMAGE ID]`
+
+`docker images` => edowon0823/user-service 존재x
+
+✔️ 이미지 다운로드 (pull)
+
+`docker pull edowon0623/user-service:1.0`
+
+`docker images` => edowon0823/user-service 존재
+
+✔️ 이미지 실행
+
+`docker run edowon0623/user-service:1.0`
+
+- 위 명령어는 포그라운드 실행이므로 로그가 뜸
+
+`docker run -d edowon0623/user-service:1.0` 으로 할 경우 백그라운드로 실행되어 로그 발생 X
+
+📢 어떤 식으로 실행하든 상관없지만 eureka, config server와 같이 먼저 실행되어야하는 서버가 실행되지 않아 오류 발생 => 다음 섹션에서 모든 서버 Docker Image로 만든 후 배포
