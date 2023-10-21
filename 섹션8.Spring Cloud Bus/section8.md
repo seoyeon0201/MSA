@@ -14,7 +14,7 @@
 
 - 분산 시스템의 노드(`마이크로서비스`)끼리 연결시키는 메세지 브로커(`RabbitMQ`) 준비 > 상태 및 구성에 대한 변경 사항을 연결된 노드에 전달 (broadcast)
 
-=> 노드 사이의 미들웨어가 존재해 노드 간의 직접 연결보다 안정적으로 메세지 전달 가능 
+=> 노드 사이의 미들웨어가 존재해 노드 간의 직접 연결보다 안정적으로 메세지 전달 가능
 
 ⭐️ Spring Cloud Config Server + Spring Cloud Bus => AMQP(Advanced Message Queuing Protocol) 사용
 
@@ -111,6 +111,9 @@
 
 - port번호 15672, username과 password는 기본으로 guest
 
+참고
+<https://velog.io/@ililil9482/Spring-Cloud-Bus>
+
 ## 3. AMQP 사용
 
 1. Dependency 추가 : pom.xml
@@ -176,10 +179,10 @@ management:
     endpoint:
         web:
             exposure:
-                include: refresh, health, beans, httptrace, busrefresh  
+                include: refresh, health, beans, httptrace, busrefresh
 ```
 
-3. 테스트 
+3. 테스트
 
 `RabbitMQ Server` > Spring Cloud `Config Service` > `Eureka Discovery Service` > Spring Cloud `Gateway Service` > Users `Microservice`
 
@@ -193,9 +196,9 @@ management:
 
 - 회원등록 > 로그인 > 로그인으로부터 가져온 토큰 정보를 넣어 health_check
 
-2. config 정보 변경 
+2. config 정보 변경
 
-- application.yml 파일의 secret을 user_token_native_application_changed_#1로 변경 후 저장
+- application.yml 파일의 secret을 user*token_native_application_changed*#1로 변경 후 저장
 
 - 웹브라우저에 config-service/default로 반영 확인
 
@@ -203,4 +206,4 @@ management:
 
 - user-service/actuator/busrefresh를 POST로 전달
 
-=> RabbitMQ와 연결된 모든 서비스에 Push됨을 알 수 있음 
+=> RabbitMQ와 연결된 모든 서비스에 Push됨을 알 수 있음
