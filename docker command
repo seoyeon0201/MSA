@@ -38,6 +38,14 @@ ex. `docker network create --gateway 172.18.0.1 --subnet 172.18.0.0/16 ecommerce
 
 ex. `docker network inspect ecommerce-network`
 
+3. network 삭체
+
+`docker network ls` 로 네트워크 조회 후
+
+`docker network rm [네트워크ID]`
+
+단, 이때 network 내의 컨테이너가 UP 상태인 경우 컨테이너 stop 한 후 삭제 가능
+
 
 ### 기타
 
