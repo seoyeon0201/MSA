@@ -12,7 +12,7 @@
 
 Powershell에서 `docker run` 명령어로 기존에 존재하는 이미지를 가지고 <span style="color:indianred">container 생성</span>
 
-`docker run -d --name rabbitmq --network cowork-network -p 15672:15672 -p 5672:5672 -p 15671:15671 -p 5671:5671 -p 4369:4369 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest rabbitmq:management`
+`docker run -d --name rabbitmq --network cowork-network -p 15672:15672 -p 5672:5672 -p 15671:15671 -p 5671:5671 -p 4369:4369 -e RABBITMQ_DEFAULT_USER=test -e RABBITMQ_DEFAULT_PASS=test rabbitmq:management`
 
 ✔️ Config Server
 
@@ -30,8 +30,8 @@ spring:
     host: 127.0.0.1
     port: 5672
     //username, password 원래 test -> guest 로 수정
-    username: guest
-    password: guest
+    username: test
+    password: test
 ```
 
 2. `Dockerfile` 생성
@@ -39,7 +39,7 @@ spring:
 ```
 FROM openjdk:17-ea-11-jdk-slim
 VOLUME /tmp
-COPY build/libs/ConfigService.jar ConfigService.jar
+COPY build/libs/*.jar ConfigService.jar
 ENTRYPOINT ["java","-jar","ConfigService.jar"]
 ```
 
@@ -63,6 +63,10 @@ jar {
 5. `docker build -t parkseoyeon/config-service:1.0 .` 명령어로 `docker image 생성`
 
 6. `docker run -d -p 8888:8888 --network cowork-network -e "spring.rabbitmq.host=rabbitmq" -e "spring.profiles.active=default" --name config-service parkseoyeon/config-service:1.0` 명령어로 `docker container 생성`
+
+7. 브라우저에 `http://127.0.0.1:8888/user-service/default` 넣어 확인
+
+![Alt text](image-1.png)
 
 ## Eureka Discovery Service
 
@@ -101,7 +105,7 @@ jar {
 ```
 FROM openjdk:17-ea-11-jdk-slim
 VOLUME /tmp
-COPY build/libs/DiscoveryService.jar DiscoveryService.jar
+COPY build/libs/*.jar DiscoveryService.jar
 ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
 ```
 
@@ -113,9 +117,59 @@ ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
 
 - 이때 Hub에 업로드 가능: `docker push parkseoyeon/discovery-service:1.0`
 
-- 이전에 만든 config-service도 Hub에 업로드: ``docker push parkseoyeon/config-service:1.0``
+- 이전에 만든 config-service도 Hub에 업로드: `docker push parkseoyeon/config-service:1.0`
 
 6. `docker run -d -p 8761:8761 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" --name discovery-service parkseoyeon/discovery-service:1.0` 명령어로 `docker container 생성`
 
+7. 브라우저에 `http://127.0.0.1:8761` 입력해 eureka server 확인
+
+![Alt text](image.png)
 
 ## Apigateway Service
+
+- 과정
+
+1. `build.gradle` 코드 수정
+
+```
+version = 1.0
+//기존: version = '0.0.1-SNAPSHOT'
+
+//아래 코드 추가
+jar {
+    <!-- archiveFileName = 'ApigatewayService.jar' -->
+    version = '1.0.0'
+}
+```
+
+2. `application.yml` 수정
+```
+server:
+  port: 8000
+#  port: 8001
+
+#아래 코드 추가
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+```
+
+3. Dockerfile 작성
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY build/libs/*.jar ApigatewayService.jar
+ENTRYPOINT ["java","-jar","ApigatewayService.jar"]
+```
+
+4. IntelliJ terminal에서 `./gradlew build`로 프로젝트 빌드
+
+5. `docker build --tag parkseoyeon/apigateway-service:1.0 .` 명령어로 docker image 생성
+
+- `docker push parkseoyeon/apigateway-service:1.0`로 Hub에 저장
+
+6. Powershell에 `docker run -d -p 8000:8000 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name apigateway-service parkseoyeon/apigateway-service:1.0`로 컨테이너 생성 실행

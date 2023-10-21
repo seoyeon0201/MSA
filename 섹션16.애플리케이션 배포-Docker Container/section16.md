@@ -179,6 +179,8 @@ cloud:
 
 ```
 
+✔️ `./gradlew build`로 빌드
+
 ✔️ IntelliJ의 터미널에 `docker build -t [계정명]/config-service:1.0 .`로 docker image 생성
 
 - 계정명의 Dockerhub에 config-service:1.0의 이름을 가진 docker image 생성
@@ -222,6 +224,7 @@ cloud:
 1. Docker image 생성
 
 ✔️ 기존 코드 수정
+
 `pom.xml`
 ```
 # 기존: <version>0.0.1-SNAPSHOT</version>
@@ -247,10 +250,11 @@ VOLUME /tmp
 COPY target/discoveryservice-1.0.jar DiscoveryService.jar
 ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
 ```
+✔️ `./gradlew build`로 빌드
 
-✔️ `docker build --tag=parkseoyeon/discovery-service:1.0 .` 명령어로 docker image 생성
+✔️ `docker build --tag=edowon0623/discovery-service:1.0 .` 명령어로 docker image 생성
 
-✔️ `docker push parkseoyeon/discovery-service:1.0` 명령어로 docker hub에 이미지 저장 가능
+✔️ `docker push edowon0623/discovery-service:1.0` 명령어로 docker hub에 이미지 저장 가능
 
 2. Docker container 생성 및 실행
 
@@ -259,6 +263,40 @@ ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
 - `-e "spring.cloud.config.uri=http://config-service:8888"` : application.yml에 존재하는 spring.cloud.config.uri를 변경하는 코드로, 해당 config-service 컨테이너와 같은 네트워크에 존재하기 때문에 IP address가 아닌 container name으로 대체 가능
 
 ## 5. Apigateway Service
+
+1. Docker image 생성
+
+✔️ 기존 코드 수정
+
+`pom.xml`
+```
+# 기존: <version>0.0.1-SNAPSHOT</version>
+<version>1.0</version>
+```
+
+✔️ `Dockerfile 생성`
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY target/apigateway-1.0.jar Apigateway.jar
+ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
+```
+✔️ `./gradlew build`로 빌드
+
+✔️ `docker build --tag=edowon0623/apigateway-service:1.0 .` 명령어로 docker image 생성
+
+- `docker push edowon0623/apigateway-service:1.0`로 Hub에 저장
+
+2. Docker container 생성 및 실행
+
+✔️ Powershell에 `docker run -d -p 8000:8000 --network ecommerce-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name apigateway-service edowon0623/apigateway-service:1.0`로 컨테이너 생성 실행
+
+- `-e "spring.cloud.config.uri=http://config-service:8888"` : config-service를 통해 configuration 사용해야하므로 이름으로 접근 (bootstrap.yml)
+
+- `-e "spring.rabbitmq.host=rabbitmq"` : RabbitMQ 접근 (application.yml)
+
+- `-e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/"` : eureka에 자신을 등록해야 하기에 eureka-service 이름으로 접근 (application.yml)
 
 ## 6. MariaDB
 
@@ -271,6 +309,26 @@ ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
 ## 10. Deployed Services
 
 ## 11. User Microservice
+
+1. Docker image 생성
+
+✔️ `Dockerfile` 생성
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY build/libs/*.jar UserService.jar
+ENTRYPOINT ["java","-jar","UserService.jar"]
+```
+
+✔️ `docker build --tag=edowon0623/user-service .`
+
+✔️ `docker push edowon0623/user-service`
+
+2. Docker container 생성 및 실행
+
+✔️ `docker run -d --network ecommerce-network --name user-service -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" edowon0623/user-service`
+
 
 ## 12. Order Microservice
 
