@@ -1,0 +1,121 @@
+## Network 생성
+
+⭐️ 하나의 network 내에 존재하는 container는 IP address 뿐 아니라 container ID 또는 container Name으로도 접근 가능
+
+`docker network create --gateway 172.18.0.1 --subnet 172.18.0.0/16 cowork-network`
+
+## Config Server
+
+⭐️ RabbitMQ & Config Server 컨테이너화
+
+✔️ RabbitMQ
+
+Powershell에서 `docker run` 명령어로 기존에 존재하는 이미지를 가지고 <span style="color:indianred">container 생성</span>
+
+`docker run -d --name rabbitmq --network cowork-network -p 15672:15672 -p 5672:5672 -p 15671:15671 -p 5671:5671 -p 4369:4369 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest rabbitmq:management`
+
+✔️ Config Server
+
+IntelliJ에서 `Dockerfile` 작성 + (필요에 따라) 기존 코드 수정 후 `docker build` 명령어를 통해 <span style="color:indianred">docker image 생성</span> & Powershell에 `docker run` 명령어로 <span style="color:indianred">docker container 생성</span>
+
+- 과정
+
+1. `application.yml` 수정
+
+```
+spring:
+  application:
+    name: config-service
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    //username, password 원래 test -> guest 로 수정
+    username: guest
+    password: guest
+```
+
+2. `Dockerfile` 생성
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY build/libs/ConfigService.jar ConfigService.jar
+ENTRYPOINT ["java","-jar","ConfigService.jar"]
+```
+
+3. `build.gradle` 코드 수정
+
+```
+version = 1.0
+//기존: version = '0.0.1-SNAPSHOT'
+
+//아래 코드 추가
+jar {
+    archiveFileName = 'ConfigService.jar'
+    version = '1.0.0'
+}
+```
+
+4. IntelliJ terminal에서 `./gradlew build`로 프로젝트 빌드
+
+=> 이때 build/libs 아래에 ConfigService.jar 생성됨
+
+5. `docker build -t parkseoyeon/config-service:1.0 .` 명령어로 `docker image 생성`
+
+6. `docker run -d -p 8888:8888 --network cowork-network -e "spring.rabbitmq.host=rabbitmq" -e "spring.profiles.active=default" --name config-service parkseoyeon/config-service:1.0` 명령어로 `docker container 생성`
+
+## Eureka Discovery Service
+
+IntelliJ에서 `Dockerfile` 작성 + (필요에 따라) 기존 코드 수정 후 `docker build` 명령어를 통해 <span style="color:indianred">docker image 생성</span> & Powershell에 `docker run` 명령어로 <span style="color:indianred">docker container 생성</span>
+
+- 과정
+
+1. `application.yml` 수정
+
+```
+spring:
+    application:
+        name: discovery-service
+    //config 정보를 사용하려면 필요하므로 추가
+    cloud:
+        config:
+            uri: http://127.0.0.1:8888
+            name: application
+```
+
+2. `build.gradle` 코드 수정
+
+```
+version = 1.0
+//기존: version = '0.0.1-SNAPSHOT'
+
+//아래 코드 추가
+jar {
+    archiveFileName = 'DiscoveryService.jar'
+    version = '1.0.0'
+}
+```
+
+3. Dockerfile 작성
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY build/libs/DiscoveryService.jar DiscoveryService.jar
+ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
+```
+
+4. IntelliJ terminal에서 `./gradlew build`로 프로젝트 빌드
+
+=> 이때 build/libs 아래에 DiscoveryService.jar 생성됨
+
+5. `docker build --tag parkseoyeon/discovery-service:1.0 .` 명령어로 `docker image 생성`
+
+- 이때 Hub에 업로드 가능: `docker push parkseoyeon/discovery-service:1.0`
+
+- 이전에 만든 config-service도 Hub에 업로드: ``docker push parkseoyeon/config-service:1.0``
+
+6. `docker run -d -p 8761:8761 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" --name discovery-service parkseoyeon/discovery-service:1.0` 명령어로 `docker container 생성`
+
+
+## Apigateway Service

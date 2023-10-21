@@ -219,6 +219,45 @@ cloud:
 
 ## 4. Discovery Service
 
+1. Docker image 생성
+
+✔️ 기존 코드 수정
+`pom.xml`
+```
+# 기존: <version>0.0.1-SNAPSHOT</version>
+<version>1.0</version>
+```
+
+`application.yml`
+```
+spring:
+    application:
+        name: discoveryservice
+    //config 정보를 사용하려면 필요하므로 추가
+    cloud:
+        config:
+            uri: http://127.0.0.1:8888
+            name: ecommerce
+```
+
+✔️ `Dockerfile 생성`
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY target/discoveryservice-1.0.jar DiscoveryService.jar
+ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
+```
+
+✔️ `docker build --tag=parkseoyeon/discovery-service:1.0 .` 명령어로 docker image 생성
+
+✔️ `docker push parkseoyeon/discovery-service:1.0` 명령어로 docker hub에 이미지 저장 가능
+
+2. Docker container 생성 및 실행
+
+✔️ Powershell에 `docker run -d -p 8761:8761 --network ecommerce-network -e "spring.cloud.config.uri=http://config-service:8888" --name discovery-service edowon0623/discovery-service:1.0`
+
+- `-e "spring.cloud.config.uri=http://config-service:8888"` : application.yml에 존재하는 spring.cloud.config.uri를 변경하는 코드로, 해당 config-service 컨테이너와 같은 네트워크에 존재하기 때문에 IP address가 아닌 container name으로 대체 가능
+
 ## 5. Apigateway Service
 
 ## 6. MariaDB
