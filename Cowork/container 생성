@@ -1,53 +1,63 @@
 ## Network 생성
 
-⭐️ 하나의 network 내에 존재하는 container는 IP address 뿐 아니라 container ID 또는 container Name으로도 접근 가능
+⭐️ 하나의 network 내에 존재하는 container는 IP address 뿐 아니라 <span style="color:indianred">container ID</span> 또는 <span style="color:indianred">container Name</span>으로도 접근 가능
 
 `docker network create --gateway 172.18.0.1 --subnet 172.18.0.0/16 cowork-network`
 
-## Config Server
+## 컨테이너화란,
 
-⭐️ RabbitMQ & Config Server 컨테이너화
+- (Image 존재하는 경우) `docker run`으로<span style="color:indianred"> Container 생성</span>
 
-✔️ RabbitMQ
+  - `docker run`은 image container 생성 & 시작 동시에 진행
 
-Powershell에서 `docker run` 명령어로 기존에 존재하는 이미지를 가지고 <span style="color:indianred">container 생성</span>
+  - `docker create`는 docker container 생성
+
+  - `docker start`는 docker container 시작
+
+- (Image 존재하지 않는 경우) 명령어로 <span style="color:indianred">Docker Image 생성</span> & <span style="color:indianred">Docker Container 생성</span>
+
+  - **Docker Image 생성**
+
+    - (필요한 경우) 코드 수정
+
+    - Dockerfile 파일 생성
+
+    - `docker build` 명령어로 Image 생성
+
+  - **Docker Container 생성**
+    
+    - `docker create`, `docker start`, `docker run` 
+
+
+
+## RabbitMQ
+
+✔️ 사용할 Image 기존 존재
 
 `docker run -d --name rabbitmq --network cowork-network -p 15672:15672 -p 5672:5672 -p 15671:15671 -p 5671:5671 -p 4369:4369 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest rabbitmq:management`
 
-✔️ Config Server
+- `docker run` : 컨테이너 생성  + 실행 (이미지가 없는 경우 다운로드까지도)
 
-IntelliJ에서 `Dockerfile` 작성 + (필요에 따라) 기존 코드 수정 후 `docker build` 명령어를 통해 <span style="color:indianred">docker image 생성</span> & Powershell에 `docker run` 명령어로 <span style="color:indianred">docker container 생성</span>
+- `-d` : 백그라운드에서 실행
 
-- 과정
+- `--name rabbitmq` : 컨테이너 이름 rabbitmq
 
-1. `application.yml` 수정
+- `--network ecommerce-network` : docker network 지정해 container 생성
 
-```
-spring:
-  application:
-    name: config-service
-  rabbitmq:
-    host: 127.0.0.1
-    port: 5672
-    //username, password 원래 test -> guest 로 수정
-    username: test
-    password: test
-```
+- `-p 15672:15672 -p 5672:5672 -p 15671:15671 -p 5671:5671 -p 4369:4369` : RabbitMQ 컨테이너 포트(: 뒤)와 Host OS 포트(: 앞) 포트 포워딩 
 
-2. `Dockerfile` 생성
+- `-e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest` : 환경 변수로 RabbitMQ 접속하기 위한 user와 password 설정
+
+- `rabbitmq:management` : 호출하고자 하는 이미지 이름. docker 실행 시 rabbitmq:management 태그를 갖는 이미지 다운로드 후 컨테이너 생성 및 실행
+
+## Config Server
+
+✔️ **Docker Image 생성**  - IntelliJ
+
+1. `build.gradle` 코드 수정
 
 ```
-FROM openjdk:17-ea-11-jdk-slim
-VOLUME /tmp
-COPY build/libs/*.jar ConfigService.jar
-ENTRYPOINT ["java","-jar","ConfigService.jar"]
-```
-
-3. `build.gradle` 코드 수정
-
-```
-version = 1.0
-//기존: version = '0.0.1-SNAPSHOT'
+version = 1.0   //기존: version = '0.0.1-SNAPSHOT'
 
 //아래 코드 추가
 jar {
@@ -56,25 +66,65 @@ jar {
 }
 ```
 
+2. `application.yml` 수정
+
+```
+spring:
+  application:
+    name: config-service
+
+  //rabbitmq 추가
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+
+    username: guest
+    password: guest
+```
+
+3. `Dockerfile` 생성
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY build/libs/*.jar ConfigService.jar
+ENTRYPOINT ["java","-jar","ConfigService.jar"]
+```
+
 4. IntelliJ terminal에서 `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
 
-=> 이때 build/libs 아래에 ConfigService.jar 생성됨
+-> 이때 build/libs 아래에 ConfigService.jar 생성
 
 5. `docker build -t parkseoyeon/config-service:1.0 .` 명령어로 `docker image 생성`
 
-6. `docker run -d -p 8888:8888 --network cowork-network -e "spring.rabbitmq.host=rabbitmq" -e "spring.profiles.active=default" --name config-service parkseoyeon/config-service:1.0` 명령어로 `docker container 생성`
+✔️ **Docker Container 생성&실행** - Windows Powershell
 
-7. 브라우저에 `http://127.0.0.1:8888/user-service/default` 넣어 확인
+`docker run -d -p 8888:8888 --network cowork-network -e "spring.rabbitmq.host=rabbitmq" -e "spring.profiles.active=default" --name config-service parkseoyeon/config-service:1.0` 명령어로 `docker container 생성`
+
+
+**✔️ 정상 동작 확인**
+
+브라우저에 `http://127.0.0.1:8888/user-service/default` 넣어 확인
 
 ![Alt text](image-1.png)
 
 ## Eureka Discovery Service
 
-IntelliJ에서 `Dockerfile` 작성 + (필요에 따라) 기존 코드 수정 후 `docker build` 명령어를 통해 <span style="color:indianred">docker image 생성</span> & Powershell에 `docker run` 명령어로 <span style="color:indianred">docker container 생성</span>
+**✔️ Docker Image 생성**
 
-- 과정
+1. `build.gradle` 코드 수정
 
-1. `application.yml` 수정
+```
+version = 1.0 //기존: version = '0.0.1-SNAPSHOT'
+
+//아래 코드 추가
+jar {
+    archiveFileName = 'DiscoveryService.jar'
+    version = '1.0.0'
+}
+```
+
+2. `application.yml` 수정
 
 ```
 spring:
@@ -87,19 +137,6 @@ spring:
             name: application
 ```
 
-2. `build.gradle` 코드 수정
-
-```
-version = 1.0
-//기존: version = '0.0.1-SNAPSHOT'
-
-//아래 코드 추가
-jar {
-    archiveFileName = 'DiscoveryService.jar'
-    version = '1.0.0'
-}
-```
-
 3. Dockerfile 작성
 
 ```
@@ -109,31 +146,30 @@ COPY build/libs/*.jar DiscoveryService.jar
 ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
 ```
 
-4. IntelliJ terminal에서 `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
-
-=> 이때 build/libs 아래에 DiscoveryService.jar 생성됨
+4. `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
 
 5. `docker build --tag parkseoyeon/discovery-service:1.0 .` 명령어로 `docker image 생성`
 
 - 이때 Hub에 업로드 가능: `docker push parkseoyeon/discovery-service:1.0`
 
-- 이전에 만든 config-service도 Hub에 업로드: `docker push parkseoyeon/config-service:1.0`
+**✔️ Docker Container 생성** - Windows Powershell
 
-6. `docker run -d -p 8761:8761 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" --name discovery-service parkseoyeon/discovery-service:1.0` 명령어로 `docker container 생성`
+`docker run -d -p 8761:8761 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" --name discovery-service parkseoyeon/discovery-service:1.0` 
 
-7. 브라우저에 `http://127.0.0.1:8761` 입력해 eureka server 확인
+**✔️ 정상 동작 확인**
+
+브라우저에 `http://127.0.0.1:8761` 입력해 Eureka Server 확인
 
 ![Alt text](image.png)
 
 ## Apigateway Service
 
-- 과정
+**✔️ Docker Image 생성**
 
 1. `build.gradle` 코드 수정
 
 ```
-version = 1.0
-//기존: version = '0.0.1-SNAPSHOT'
+version = 1.0   //기존: version = '0.0.1-SNAPSHOT'
 
 //아래 코드 추가
 jar {
@@ -150,12 +186,14 @@ server:
 spring:
   application:
     name: gateway-service
+
   #rabbitmq 정보 추가
   rabbitmq:
     host: 127.0.0.1
     port: 5672
     username: guest
     password: guest
+
   jpa:
     show-sql: true
     hibernate:
@@ -180,25 +218,99 @@ COPY build/libs/*.jar ApigatewayService.jar
 ENTRYPOINT ["java","-jar","ApigatewayService.jar"]
 ```
 
-4. IntelliJ terminal에서 `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
+4. `./gradlew build` 또는 `./gradlew build -x test`
 
 5. `docker build --tag parkseoyeon/apigateway-service:1.0 .` 명령어로 docker image 생성
 
 - `docker push parkseoyeon/apigateway-service:1.0`로 Hub에 저장
 
-6. Powershell에 `docker run -d -p 8001:8001 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name apigateway-service parkseoyeon/apigateway-service:1.0`로 컨테이너 생성 실행
+**✔️ Docker Container 생성&실행** 
+
+`docker run -d -p 8001:8001 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name apigateway-service parkseoyeon/apigateway-service:1.0`
 
 ## Calendar service
 
-## Dashboard service
-
-- 과정
+**✔️ Docker Image 생성**
 
 1. `build.gradle` 코드 수정
 
 ```
-version = 1.0
-//기존: version = '0.0.1-SNAPSHOT'
+version = 1.0   //기존: version = '0.0.1-SNAPSHOT'
+
+//아래 코드 추가
+jar {
+    archiveFileName = 'CalendarService.jar'
+    version = '1.0.0'
+}
+```
+
+2. `application.yml` 수정
+```
+server:
+  port: 0
+
+spring:
+//rabbitmq 정보 추가
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+
+  application:
+    name: calendar-service
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+logging:
+  level:
+    com.example.userservice.client: DEBUG
+
+//eureka 정보 추가
+eureka:
+  instance:
+    instance-id: ${spring.cloud.client.hostname}:${spring.application.instance_id:${random.value}}
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+```
+
+3. Dockerfile 작성
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY build/libs/*.jar CalendarService.jar
+ENTRYPOINT ["java","-jar","CalendarService.jar"]
+```
+
+4. `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
+
+5. `docker build --tag parkseoyeon/calendar-service:1.0 .` 
+
+- `docker push parkseoyeon/calendar-service:1.0`로 Hub에 저장
+
+**✔️ Docker Container 생성&실행** - Windows Powershell
+
+`docker run -d --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name calendar-service parkseoyeon/calendar-service:1.0`
+
+
+## Dashboard service
+
+**✔️ Docker Image 생성**
+
+1. `build.gradle` 코드 수정
+
+```
+version = 1.0   //기존: version = '0.0.1-SNAPSHOT'
 
 //아래 코드 추가
 jar {
@@ -254,23 +366,24 @@ COPY build/libs/*.jar DashboardService.jar
 ENTRYPOINT ["java","-jar","DashboardService.jar"]
 ```
 
-4. IntelliJ terminal에서 `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
+4. `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
 
 5. `docker build --tag parkseoyeon/dashboard-service:1.0 .` 명령어로 docker image 생성
 
 - `docker push parkseoyeon/apigateway-service:1.0`로 Hub에 저장
 
-6. Powershell에 `docker run -d --network cowork-network -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name dashboard-service parkseoyeon/dashboard-service:1.0`로 컨테이너 생성 실행
+**✔️ Docker Container 생성&실행** - Windows Powershell
+
+`docker run -d --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name dashboard-service parkseoyeon/dashboard-service:1.0`로 컨테이너 생성 실행
 
 ## UserService
 
-- 과정
+**✔️ Docker Image 생성**
 
 1. `build.gradle` 코드 수정
 
 ```
-version = 1.0
-//기존: version = '0.0.1-SNAPSHOT'
+version = 1.0   //기존: version = '0.0.1-SNAPSHOT'
 
 //아래 코드 추가
 jar {
@@ -291,6 +404,7 @@ spring:
     port: 5672
     username: guest
     password: guest
+
   application:
     name: user-service
 
@@ -326,10 +440,96 @@ COPY build/libs/*.jar UserService.jar
 ENTRYPOINT ["java","-jar","UserService.jar"]
 ```
 
-4. IntelliJ terminal에서 `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
+4. `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
 
 5. `docker build --tag parkseoyeon/user-service:1.0 .` 명령어로 docker image 생성
 
 - `docker push parkseoyeon/user-service:1.0`로 Hub에 저장
 
-6. Powershell에 `docker run -d --network cowork-network -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name user-service parkseoyeon/user-service:1.0`로 컨테이너 생성 실행
+**✔️ Docker Container 생성&실행** - Windows Powershell
+
+`docker run -d --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name user-service parkseoyeon/user-service:1.0`로 컨테이너 생성 실행
+
+## BoardService
+
+**✔️ Docker Image 생성**
+
+1. `build.gradle` 코드 수정
+
+```
+version = 1.0   //기존: version = '0.0.1-SNAPSHOT'
+
+//아래 코드 추가
+jar {
+    archiveFileName = 'BoardService.jar'
+    version = '1.0.0'
+}
+```
+
+2. `application.yml` 수정
+```
+server:
+  port: 0
+
+spring:
+//rabbitmq 정보 추가
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+
+  application:
+    name: board-service
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+logging:
+  level:
+    com.example.userservice.client: DEBUG
+
+//eureka 정보 추가
+eureka:
+  instance:
+    instance-id: ${spring.cloud.client.hostname}:${spring.application.instance_id:${random.value}}
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+```
+
+3. Dockerfile 작성
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY build/libs/*.jar BoardService.jar
+ENTRYPOINT ["java","-jar","BoardService.jar"]
+```
+
+4. `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
+
+5. `docker build --tag parkseoyeon/board-service:1.0 .` 명령어로 docker image 생성
+
+- `docker push parkseoyeon/board-service:1.0`로 Hub에 저장
+
+**✔️ Docker Container 생성&실행** - Windows Powershell
+
+`docker run -d --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name board-service parkseoyeon/board-service:1.0`로 컨테이너 생성 실행
+
+## Work :Node.js
+
+추후 업데이트
+
+## Eureka Server
+
+`http://127.0.0.1:8761/`
+
+![Alt text](image-2.png)
