@@ -298,17 +298,7 @@ ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
 
 - `-e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/"` : eureka에 자신을 등록해야 하기에 eureka-service 이름으로 접근 (application.yml)
 
-## 6. MariaDB
-
-## 7. Kafka
-
-## 8. Zipkin
-
-## 9. Monitoring
-
-## 10. Deployed Services
-
-## 11. User Microservice
+## 6. User Microservice
 
 1. Docker image 생성
 
@@ -321,6 +311,16 @@ COPY build/libs/*.jar UserService.jar
 ENTRYPOINT ["java","-jar","UserService.jar"]
 ```
 
+✔️ user-config 수정
+git에 있는 `user-service.yml` 값 수정
+
+- `docker inspect apigateway-service`로 IPAddress 확인 , 복사해 git에 있는 config 파일의 gateway: ip 수정
+
+```
+gateway:
+    ip: 172.18.0.5
+```
+
 ✔️ `docker build --tag=edowon0623/user-service .`
 
 ✔️ `docker push edowon0623/user-service`
@@ -328,12 +328,3 @@ ENTRYPOINT ["java","-jar","UserService.jar"]
 2. Docker container 생성 및 실행
 
 ✔️ `docker run -d --network ecommerce-network --name user-service -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" edowon0623/user-service`
-
-
-## 12. Order Microservice
-
-## 13. Catalog Microservice
-
-## 14. Test
-
-## 15. Multi Profiles

@@ -12,7 +12,7 @@
 
 Powershell에서 `docker run` 명령어로 기존에 존재하는 이미지를 가지고 <span style="color:indianred">container 생성</span>
 
-`docker run -d --name rabbitmq --network cowork-network -p 15672:15672 -p 5672:5672 -p 15671:15671 -p 5671:5671 -p 4369:4369 -e RABBITMQ_DEFAULT_USER=test -e RABBITMQ_DEFAULT_PASS=test rabbitmq:management`
+`docker run -d --name rabbitmq --network cowork-network -p 15672:15672 -p 5672:5672 -p 15671:15671 -p 5671:5671 -p 4369:4369 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest rabbitmq:management`
 
 ✔️ Config Server
 
@@ -56,7 +56,7 @@ jar {
 }
 ```
 
-4. IntelliJ terminal에서 `./gradlew build`로 프로젝트 빌드
+4. IntelliJ terminal에서 `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
 
 => 이때 build/libs 아래에 ConfigService.jar 생성됨
 
@@ -109,7 +109,7 @@ COPY build/libs/*.jar DiscoveryService.jar
 ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
 ```
 
-4. IntelliJ terminal에서 `./gradlew build`로 프로젝트 빌드
+4. IntelliJ terminal에서 `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
 
 => 이때 build/libs 아래에 DiscoveryService.jar 생성됨
 
@@ -145,14 +145,28 @@ jar {
 2. `application.yml` 수정
 ```
 server:
-  port: 8000
-#  port: 8001
+  port: 8001
+
+spring:
+  application:
+    name: gateway-service
+  #rabbitmq 정보 추가
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    database-platform: org.hibernate.dialect.MySQLDialect
 
 #아래 코드 추가
 eureka:
   client:
-    register-with-eureka: true
-    fetch-registry: true
     service-url:
       defaultZone: http://localhost:8761/eureka
 ```
@@ -166,10 +180,156 @@ COPY build/libs/*.jar ApigatewayService.jar
 ENTRYPOINT ["java","-jar","ApigatewayService.jar"]
 ```
 
-4. IntelliJ terminal에서 `./gradlew build`로 프로젝트 빌드
+4. IntelliJ terminal에서 `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
 
 5. `docker build --tag parkseoyeon/apigateway-service:1.0 .` 명령어로 docker image 생성
 
 - `docker push parkseoyeon/apigateway-service:1.0`로 Hub에 저장
 
-6. Powershell에 `docker run -d -p 8000:8000 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name apigateway-service parkseoyeon/apigateway-service:1.0`로 컨테이너 생성 실행
+6. Powershell에 `docker run -d -p 8001:8001 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name apigateway-service parkseoyeon/apigateway-service:1.0`로 컨테이너 생성 실행
+
+## Calendar service
+
+## Dashboard service
+
+- 과정
+
+1. `build.gradle` 코드 수정
+
+```
+version = 1.0
+//기존: version = '0.0.1-SNAPSHOT'
+
+//아래 코드 추가
+jar {
+    archiveFileName = 'DashboardService.jar'
+    version = '1.0.0'
+}
+```
+
+2. `application.yml` 수정
+```
+server:
+  port: 0
+
+spring:
+//rabbitmq 정보 추가
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+  application:
+    name: dashboard-service
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+logging:
+  level:
+    com.example.userservice.client: DEBUG
+
+//eureka 정보 추가
+eureka:
+  instance:
+    instance-id: ${spring.cloud.client.hostname}:${spring.application.instance_id:${random.value}}
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+```
+
+3. Dockerfile 작성
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY build/libs/*.jar DashboardService.jar
+ENTRYPOINT ["java","-jar","DashboardService.jar"]
+```
+
+4. IntelliJ terminal에서 `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
+
+5. `docker build --tag parkseoyeon/dashboard-service:1.0 .` 명령어로 docker image 생성
+
+- `docker push parkseoyeon/apigateway-service:1.0`로 Hub에 저장
+
+6. Powershell에 `docker run -d --network cowork-network -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name dashboard-service parkseoyeon/dashboard-service:1.0`로 컨테이너 생성 실행
+
+## UserService
+
+- 과정
+
+1. `build.gradle` 코드 수정
+
+```
+version = 1.0
+//기존: version = '0.0.1-SNAPSHOT'
+
+//아래 코드 추가
+jar {
+    archiveFileName = 'UserService.jar'
+    version = '1.0.0'
+}
+```
+
+2. `application.yml` 수정
+```
+server:
+  port: 0
+
+spring:
+//rabbitmq 정보 추가
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+  application:
+    name: user-service
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+logging:
+  level:
+    com.example.userservice.client: DEBUG
+
+//eureka 정보 추가
+eureka:
+  instance:
+    instance-id: ${spring.cloud.client.hostname}:${spring.application.instance_id:${random.value}}
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+```
+
+3. Dockerfile 작성
+
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY build/libs/*.jar UserService.jar
+ENTRYPOINT ["java","-jar","UserService.jar"]
+```
+
+4. IntelliJ terminal에서 `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
+
+5. `docker build --tag parkseoyeon/user-service:1.0 .` 명령어로 docker image 생성
+
+- `docker push parkseoyeon/user-service:1.0`로 Hub에 저장
+
+6. Powershell에 `docker run -d --network cowork-network -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name user-service parkseoyeon/user-service:1.0`로 컨테이너 생성 실행
