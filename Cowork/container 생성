@@ -25,10 +25,8 @@
     - `docker build` 명령어로 Image 생성
 
   - **Docker Container 생성**
-    
-    - `docker create`, `docker start`, `docker run` 
 
-
+    - `docker create`, `docker start`, `docker run`
 
 ## RabbitMQ
 
@@ -36,7 +34,7 @@
 
 `docker run -d --name rabbitmq --network cowork-network -p 15672:15672 -p 5672:5672 -p 15671:15671 -p 5671:5671 -p 4369:4369 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest rabbitmq:management`
 
-- `docker run` : 컨테이너 생성  + 실행 (이미지가 없는 경우 다운로드까지도)
+- `docker run` : 컨테이너 생성 + 실행 (이미지가 없는 경우 다운로드까지도)
 
 - `-d` : 백그라운드에서 실행
 
@@ -44,7 +42,7 @@
 
 - `--network ecommerce-network` : docker network 지정해 container 생성
 
-- `-p 15672:15672 -p 5672:5672 -p 15671:15671 -p 5671:5671 -p 4369:4369` : RabbitMQ 컨테이너 포트(: 뒤)와 Host OS 포트(: 앞) 포트 포워딩 
+- `-p 15672:15672 -p 5672:5672 -p 15671:15671 -p 5671:5671 -p 4369:4369` : RabbitMQ 컨테이너 포트(: 뒤)와 Host OS 포트(: 앞) 포트 포워딩
 
 - `-e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest` : 환경 변수로 RabbitMQ 접속하기 위한 user와 password 설정
 
@@ -52,7 +50,7 @@
 
 ## Config Server
 
-✔️ **Docker Image 생성**  - IntelliJ
+✔️ **Docker Image 생성** - IntelliJ
 
 1. `build.gradle` 코드 수정
 
@@ -100,7 +98,6 @@ ENTRYPOINT ["java","-jar","ConfigService.jar"]
 ✔️ **Docker Container 생성&실행** - Windows Powershell
 
 `docker run -d -p 8888:8888 --network cowork-network -e "spring.rabbitmq.host=rabbitmq" -e "spring.profiles.active=default" --name config-service parkseoyeon/config-service:1.0` 명령어로 `docker container 생성`
-
 
 **✔️ 정상 동작 확인**
 
@@ -154,7 +151,7 @@ ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
 
 **✔️ Docker Container 생성** - Windows Powershell
 
-`docker run -d -p 8761:8761 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" --name discovery-service parkseoyeon/discovery-service:1.0` 
+`docker run -d -p 8761:8761 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" --name discovery-service parkseoyeon/discovery-service:1.0`
 
 **✔️ 정상 동작 확인**
 
@@ -179,6 +176,7 @@ jar {
 ```
 
 2. `application.yml` 수정
+
 ```
 server:
   port: 8001
@@ -224,7 +222,7 @@ ENTRYPOINT ["java","-jar","ApigatewayService.jar"]
 
 - `docker push parkseoyeon/apigateway-service:1.0`로 Hub에 저장
 
-**✔️ Docker Container 생성&실행** 
+**✔️ Docker Container 생성&실행**
 
 `docker run -d -p 8001:8001 --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name apigateway-service parkseoyeon/apigateway-service:1.0`
 
@@ -245,6 +243,7 @@ jar {
 ```
 
 2. `application.yml` 수정
+
 ```
 server:
   port: 0
@@ -294,14 +293,13 @@ ENTRYPOINT ["java","-jar","CalendarService.jar"]
 
 4. `./gradlew build` 또는 `./gradlew build -x test`로 프로젝트 빌드
 
-5. `docker build --tag parkseoyeon/calendar-service:1.0 .` 
+5. `docker build --tag parkseoyeon/calendar-service:1.0 .`
 
 - `docker push parkseoyeon/calendar-service:1.0`로 Hub에 저장
 
 **✔️ Docker Container 생성&실행** - Windows Powershell
 
 `docker run -d --network cowork-network -e "spring.cloud.config.uri=http://config-service:8888" -e "spring.rabbitmq.host=rabbitmq" -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" --name calendar-service parkseoyeon/calendar-service:1.0`
-
 
 ## Dashboard service
 
@@ -320,6 +318,7 @@ jar {
 ```
 
 2. `application.yml` 수정
+
 ```
 server:
   port: 0
@@ -393,6 +392,7 @@ jar {
 ```
 
 2. `application.yml` 수정
+
 ```
 server:
   port: 0
@@ -467,6 +467,7 @@ jar {
 ```
 
 2. `application.yml` 수정
+
 ```
 server:
   port: 0
@@ -633,3 +634,5 @@ docker run -d -p 3000:3000 --network cowork-network\
 `http://127.0.0.1:8761/`에 work 추가
 
 ![Alt text](image-2.png)
+
+- 추후 Ingress 써서 배포해볼 것

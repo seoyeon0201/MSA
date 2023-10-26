@@ -2,19 +2,19 @@
 
 - VM
 
-    - 이름: Co_work_server
-    - spec: Flavor: m1.medium
-    - VM 이미지: ubuntu 18.04
+  - 이름: Co_work_server
+  - spec: Flavor: m1.medium
+  - VM 이미지: ubuntu 18.04
 
 - VM 접속
 
-    - `VPN` 파일(.ovpn) 다운로드 후 비밀번호 입력
+  - `VPN` 파일(.ovpn) 다운로드 후 비밀번호 입력
 
-    ![Alt text](image-4.png)
+  ![Alt text](image-4.png)
 
-    - `PuTTY`를 통해 주어진 IP address로 접속한 후 id와 password 입력해 VM 접속
+  - `PuTTY`를 통해 주어진 IP address로 접속한 후 id와 password 입력해 VM 접속
 
-    - 자세한 내용은 cowork git의 Cloud repository에 존재
+  - 자세한 내용은 cowork git의 Cloud repository에 존재
 
 ## 1. Docker 설치 => version 20.10.24
 
@@ -60,3 +60,132 @@ swapoff -a
 ```
 
 ```
+
+# 오류 발생
+
+![Alt text](image-10.png)
+
+1. flannel 문제
+
+![Alt text](image-5.png)
+
+<https://velog.io/@chan9708/k8ssettings#615-cni>
+
+kubectl describe pod [flannel pod 명]
+
+![Alt text](image-6.png)
+
+2. env 문제
+
+`Deployment 예제`
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discovery-service
+  template:
+    metadata:
+      labels:
+        app: discovery-service
+    spec:
+      containers:
+        - name: discovery-service
+          image: parkseoyeon/discovery-service:1.0
+          ports:
+            - containerPort: 8761
+          //추가
+          env:
+            - name: spring.cloud.config.uri
+              value: http://config-service:8888
+```
+
+- env 확인이 가능한가?
+
+
+3. Service
+
+- API Gateway는 NodePort, Discovery와 Config Service는 Cluster IP
+
+`Service 예제`
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+spec:
+  type: NodePort
+  selector:
+    app: api-gateway
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8001
+      nodePort: 30001
+```
+
+# 로컬에서 Kubernetes 실행 
+
+**VM x**
+
+1. docker desktop에서 kubernetes 설치
+
+![Alt text](image-7.png)
+
+2. Powershell
+
+- `kubectl version`으로 설치 확인
+
+- 설치되어있지 않은 경우 설치
+
+![Alt text](image-8.png)
+
+3. vim 설치
+
+<https://velog.io/@deadkim/windows-vim-windows%EC%97%90%EC%84%9C%EC%9D%98-vim-%EC%82%AC%EC%9A%A9>
+
+4. yaml 파일 생성
+
+`discovery.yml`
+![Alt text](image-9.png)
+
+`config.yml`
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-service
+  template:
+    metadata:
+      labels:
+        app: config-service
+    spec:
+      containers:
+        - name: config-service
+          image: parkseoyeon/config-service:1.0
+          ports:
+            - containerPort: 8888
+---
+apiVersion: v1
+kine: Service
+metadata:
+  name: config-service
+spec:
+  type: ClusterIP
+  selector:
+    app: config-service
+  ports:
+    - port: 90
+      targetPort: 8888
+```
+
+`apigateway.yml`
