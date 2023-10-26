@@ -626,7 +626,7 @@ CMD ["npm", "start"]
 ```
 docker run -d -p 3000:3000 --network cowork-network\
 	         -e "EUREKA_SERVER=discovery-service"\
-					 --name work-service yoonhye/work-service:1.0
+					 --name work-service parkseoyeon/work-service:1.0
 ```
 
 ## Eureka Server
@@ -636,3 +636,8 @@ docker run -d -p 3000:3000 --network cowork-network\
 ![Alt text](image-2.png)
 
 - 추후 Ingress 써서 배포해볼 것
+
+
+## MSA 쿠버네티스 배포 참고 영상
+
+<https://forward.nhn.com/2022/sessions/31>

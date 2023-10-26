@@ -188,4 +188,10 @@ spec:
       targetPort: 8888
 ```
 
-`apigateway.yml`
+
+
+
+
+## MSA 쿠버네티스 배포 참고 영상
+
+<https://forward.nhn.com/2022/sessions/31>
