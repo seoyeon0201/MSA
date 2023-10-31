@@ -644,13 +644,15 @@ docker run -d -p 3000:3000 --network cowork-network\
 
 ## 최종
 
-calendar-service
+### calendar-service:2.0 Docker imag
 
 `application.yml`
 
 - spring.cloud.client.hostname: ${HOSTNAME} 추가
 
 - eureka.instance.hostname: ${HOSTNAME} 추가
+
+- 전체 코드
 
 ```
 server:
@@ -697,4 +699,85 @@ eureka:
     service-url:
       defaultZone: http://localhost:8761/eureka
 
+```
+
+접근
+
+- POSTMAN: `http://192.168.23.212:32061/calendar-service/calendars/minutes/all/2`
+
+  - Internal Server Error
+
+- curl 명령어: `curl http://10.244.1.75:5001/calendars/minutes/all/2`
+
+  - 직접 접근했으므로 정상 동작
+
+![Alt text](image-13.png)
+
+### calendar-service:3.0 Docker imag
+
+`application.yml`
+
+(calendar-service:2.0 이어서)
+
+- eureka.instance.prefer-ip-address: true
+
+```
+
+```
+
+## calendar-service:4.0 Docker image
+
+- 아래 코드 추가
+
+`application.yml`
+
+```
+eureka:
+  instance:
+    #아래 두줄 추가
+    hostname: calendar-service-0.default.svc.cluster.local
+```
+
+## dashboard-service:2.0 & 3.0 Docker image
+
+- eureka.instance.hostname: dashboard-service로 설정
+
+- eureka.instance.instance-id 주석처리
+
+`application.yml`
+
+```
+server:
+  port: 0
+
+spring:
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+  application:
+    name: dashboard-service
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+logging:
+  level:
+    com.example.userservice.client: DEBUG
+
+eureka:
+  instance:
+    hostname: dashboard-service
+    #instance-id: ${spring.cloud.client.hostname}:${spring.application.instance_id:${random.value}}
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
 ```
