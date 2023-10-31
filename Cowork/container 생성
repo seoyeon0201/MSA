@@ -641,3 +641,60 @@ docker run -d -p 3000:3000 --network cowork-network\
 ## MSA 쿠버네티스 배포 참고 영상
 
 <https://forward.nhn.com/2022/sessions/31>
+
+## 최종
+
+calendar-service
+
+`application.yml`
+
+- spring.cloud.client.hostname: ${HOSTNAME} 추가
+
+- eureka.instance.hostname: ${HOSTNAME} 추가
+
+```
+server:
+  #기존
+  #port: 0
+  port: 5001
+
+spring:
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+
+  application:
+    name: calendar-service
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+  #추가
+  cloud:
+    client:
+      hostname: ${HOSTNAME}
+
+logging:
+  level:
+    com.example.userservice.client: DEBUG
+
+eureka:
+  instance:
+    #아래 한줄 추가
+    hostname: ${HOSTNAME}
+
+    instance-id: ${spring.cloud.client.hostname}:${spring.application.instance_id:${random.value}}
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+```
