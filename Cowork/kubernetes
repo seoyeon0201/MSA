@@ -269,3 +269,44 @@ ex. `helm install order-internal shopby-api -f order-internal.yml -n order`
 ![Alt text](image-12.png)
 
 <https://forward.nhn.com/2022/sessions/31>
+
+## 실제 변환
+
+1. config-server
+
+IntelliJ 해당 프로젝트에 `bootstrap.yml` 추가
+```
+spring:
+  application:
+    name: config-service
+  cloud:
+    config:
+      uri: http://config-server.com:8888
+      enabled: true
+    kubernetes:
+      enabled: false
+```
+
+k8s에 `bootstrap-kubernetes.yml` 추가
+```
+spring:
+  profiles:
+  cloud:
+    config:
+      enabled: false
+    kubernetes:
+      enabled: true
+      loadbalancer:
+        enabled: true
+        mode: service
+      discovery:
+        enabled: true
+        all-namespaces: true
+      config:
+       enabled: tru
+```
+위 X
+
+## 참고
+
+<https://happycloud-lee.tistory.com/210>
