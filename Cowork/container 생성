@@ -637,7 +637,6 @@ docker run -d -p 3000:3000 --network cowork-network\
 
 - 추후 Ingress 써서 배포해볼 것
 
-
 ## MSA 쿠버네티스 배포 참고 영상
 
 <https://forward.nhn.com/2022/sessions/31>
@@ -647,6 +646,8 @@ docker run -d -p 3000:3000 --network cowork-network\
 ### calendar-service:2.0 Docker imag
 
 `application.yml`
+
+- server.port: 5001 변경
 
 - spring.cloud.client.hostname: ${HOSTNAME} 추가
 
@@ -721,10 +722,6 @@ eureka:
 
 - eureka.instance.prefer-ip-address: true
 
-```
-
-```
-
 ## calendar-service:4.0 Docker image
 
 - 아래 코드 추가
@@ -737,6 +734,14 @@ eureka:
     #아래 두줄 추가
     hostname: calendar-service-0.default.svc.cluster.local
 ```
+
+접근
+
+- POSTMAN: `http://192.168.23.212:32061/calendar-service/calendars/minutes/all/2`
+
+  - 정상작동
+
+![Alt text](image-14.png)
 
 ## dashboard-service:2.0 & 3.0 Docker image
 
@@ -781,3 +786,12 @@ eureka:
     service-url:
       defaultZone: http://localhost:8761/eureka
 ```
+
+접근
+
+- POSTMAN: `http://192.168.23.212:32061/dashboard-service/dashboard/professor/4`
+
+  - 정상동작
+
+![Alt text](image-15.png)
+
