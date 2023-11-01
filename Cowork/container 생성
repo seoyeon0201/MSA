@@ -795,3 +795,44 @@ eureka:
 
 ![Alt text](image-15.png)
 
+## apigateway-service:2.0 Docker image
+
+`eureka.instance.hostname: gateway-service`로 설정
+
+- k8s의 service 이름과 동일해야하므로 apigateway-service로 설정해야함
+
+## apigateway-service:3.0 Docker image
+
+- `application.yml`에 아래 코드 추가
+
+`eureka.instance.hostname: apigateway-service`로 설정
+
+`spring.application.name: apigateway-service`로 설정
+
+```
+server:
+  port: 8001
+
+spring:
+  application:
+    name: apigateway-service
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+eureka:
+  instance:
+    hostname: apigateway-service
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+```

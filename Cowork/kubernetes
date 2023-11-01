@@ -310,3 +310,67 @@ spring:
 ## 참고
 
 <https://happycloud-lee.tistory.com/210>
+
+## EC2 생성
+
+1. EC2 인스턴스 시작
+
+- 아래 블로그 참고
+
+- AMI로 `Ubuntu` 선택
+
+- 인스턴스 유형: t2.micro
+
+- 키페어 생성
+
+  - 키페어 이름: cowork
+  - 유형: RSA
+  - 프라이빗 키 파일 형식: .pem
+
+  - 해당 키페어는 다시 받을 수 없기 때문에 안전하게 보관할 것 ! => 경로: C:/Backend/Cowork_Cloud
+
+
+- 보안그룹과 탄력적 IP 진행 X
+
+<https://velog.io/@kyj311/AWS-EC2-%EC%95%8C%EC%95%84%EB%B3%B4%EA%B8%B0>
+
+2. 보안 그룹 설정
+
+- EC2> 인스턴스> 인스턴스 ID 클릭>보안의 보안그룹 > 인바운드 규칙에 `자신의 IP주소` 삽입
+
+![Alt text](image-16.png)
+
+3. git bash로 접속
+
+- 키페어(.pem)를 C:/Backend/Cowork_Cloud로 복사
+
+- 실행 명령어
+```
+chmod 400 [.pem 경로]
+ssh -i [.pem 경로] [AMI로 선택한 것]:[퍼블릭 IPv4 주소]
+```
+
+```
+chmod 400 C:/Backend/Cowork_Cloud
+ssh -i C:/Backend/Cowork_Cloud ubuntu@54.180.26.28 # 처음에만 실행
+#확인 메세지 발생 (아래)
+ssh -i C:/Backend/Cowork_Cloud/cowork.pem ubuntu@54.180.26.28 # 이후로 계속 해당 명령어로 실행
+```
+
+- 확인메세지
+```
+The authenticity of host '54.180.26.28 (54.180.26.28)' can't be established.
+ED25519 key fingerprint is SHA256:DHEmHLTIrHD7sxp8sdxOObB2Umj9PPwr+SDKAFO9chI.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '54.180.26.28' (ED25519) to the list of known hosts.
+Load key "C:/Backend/Cowork_Cloud": Is a directory
+ubuntu@54.180.26.28: Permission denied (publickey).
+
+```
+![Alt text](image-17.png)
+
+
+- 접속 성공시
+
+![Alt text](image-18.png)
