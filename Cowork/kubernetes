@@ -1,12 +1,12 @@
-## VM에 이전에 만든 docker image를 기반으로 msa로 배포
+## VM에 docker image를 기반으로 배포 -1
 
-- VM
+### VM 스펙
 
   - 이름: Co_work_server
-  - spec: Flavor: m1.medium
+  - spec: Flavor: m1.medium 이상
   - VM 이미지: ubuntu 18.04
 
-- VM 접속
+### VM 접속 방법
 
   - `VPN` 파일(.ovpn) 다운로드 후 비밀번호 입력
 
@@ -16,371 +16,10 @@
 
   - 자세한 내용은 cowork git의 Cloud repository에 존재
 
-## 1. Docker 설치 => version 20.10.24
+### VM에 Docker와 Kubernetes 설치
 
 ```
-sudo apt update
-sudo apt install apt-transport-https ca-certificates curl software-properties-common    //apt가 https 레포지토리 사용할 수 있도록하는 패키지 설치
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -    //docker 공식 gpg 키 추가
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"   //docker의 apt 저장소를 시스템에 추가. docker package 제공
-sudo apt update
-sudo apt install docker-ce	//docker-ce 설치
-sudo systemctl status docker	//docker 설치 확인
-sudo docker version  //docker 버전 확인
-```
-
-![Alt text](image-3.png)
-
-## 2. Kubernetes 설치
-
-1. kubeadm, kubelet, kubectl 설치
-
-```
-sudo apt-get install -y apt-transport-https curl
-curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add –
-cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list deb https://apt.kubernetes.io/ kubernetes-xenial main EOF
-sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
-
-//버전 확인
-kubeadm version
-kubelet --version
-kubectl version
-```
-
-2. Master 설정
-
-```
-swapoff -a
-
-```
-
-3. Worker 설정
-
-```
-
-```
-
-# 오류 발생
-
-![Alt text](image-10.png)
-
-1. flannel 문제
-
-![Alt text](image-5.png)
-
-<https://velog.io/@chan9708/k8ssettings#615-cni>
-
-kubectl describe pod [flannel pod 명]
-
-![Alt text](image-6.png)
-
-2. env 문제
-
-`Deployment 예제`
-```
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: discovery-service
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: discovery-service
-  template:
-    metadata:
-      labels:
-        app: discovery-service
-    spec:
-      containers:
-        - name: discovery-service
-          image: parkseoyeon/discovery-service:1.0
-          ports:
-            - containerPort: 8761
-          //추가
-          env:
-            - name: spring.cloud.config.uri
-              value: http://config-service:8888
-```
-
-- env 확인이 가능한가?
-
-
-3. Service
-
-- API Gateway는 NodePort, Discovery와 Config Service는 Cluster IP
-
-`Service 예제`
-```
-apiVersion: v1
-kind: Service
-metadata:
-  name: api-gateway
-spec:
-  type: NodePort
-  selector:
-    app: api-gateway
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8001
-      nodePort: 30001
-```
-
-# 로컬에서 Kubernetes 실행 
-
-**VM x**
-
-1. docker desktop에서 kubernetes 설치
-
-![Alt text](image-7.png)
-
-2. Powershell
-
-- `kubectl version`으로 설치 확인
-
-- 설치되어있지 않은 경우 설치
-
-![Alt text](image-8.png)
-
-3. vim 설치
-
-<https://velog.io/@deadkim/windows-vim-windows%EC%97%90%EC%84%9C%EC%9D%98-vim-%EC%82%AC%EC%9A%A9>
-
-4. yaml 파일 생성
-
-`discovery.yml`
-![Alt text](image-9.png)
-
-`config.yml`
-```
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: config-pod
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: config-service
-  template:
-    metadata:
-      labels:
-        app: config-service
-    spec:
-      containers:
-        - name: config-service
-          image: parkseoyeon/config-service:1.0
-          ports:
-            - containerPort: 8888
----
-apiVersion: v1
-kine: Service
-metadata:
-  name: config-service
-spec:
-  type: ClusterIP
-  selector:
-    app: config-service
-  ports:
-    - port: 90
-      targetPort: 8888
-```
-
-
-
-
-
-## MSA 쿠버네티스 배포 참고 영상
-
-### 1. 쿠버네티스 전환 준비
-
-1. 샵바이 마이크로서비스 기존 구조
-
-- Spring Cloud 기반으로 구현
-
-- 마이크로서비스 간의 내부 통신 가능 => Spring Cloud OpenFeign = `Service Discovery`와 Load Balancer 필요
-
-- 모든 API의 트래픽을 가장 먼저 받아 적절히 라우팅하는 `API Gateway`
-
-- 마이크로서비스의 모든 properties를 포함하는 `Config Server`
-
-|Dependency|VM(On-Prem)|Kubernetes|
-|:--:|:--:|:--:|
-|API Gateway|Spring Cloud Gateway|Ingress|
-|내부 통신|Spring Cloud OpenFeign|Spring Cloud OpenFeign|
-|서비스 디스커버리|Spring Cloud Zookeeper|-|
-|서비스 레지스트리|Zookeeper|Service|
-|프로퍼티 파일 관리|Spring Cloud Config|ConfigMap, Secret|
-|MySQL, Mongo, Kafka, Redis 등|사용 중|그대로 사용|
-
-
-2. 서비스 레지스트리
-
-- 쿠버네티스가 디스커버리와 로드밸런서의 역할 제공
-
-- 클러스터 내의 모든 pod가 service에 접근할 수 있도록 별도의 DNS 제공
-
-- Discovery Client 대신 `Kubernetes DiscoveryClient` 사용 
- 
-- dependency만 변경하면 사용 가능: Zookeeper DiscoveryClient -> Kubernetes DiscoveryClient
-
-=> 내부 통신/서비스 디스커버리/서비스 레지스트리 사용 가능
-
-3. Spring Cloud Gateway
-
-- dependency만 변경하면 사용 가능: Zookeeper DiscoveryClient -> Kubernetes DiscoveryClient
-
-4. API Gateway
-
-- Spring Cloud Gateway 사용할지 VS Ingress 사용할지
-
-- Spring Cloud Gateway 그대로 사용
-
-5. Spring Cloud Config
-
-- Kubernetes 사용 시 (1) ConfigMap 또는 Secret으로 설정 파일 관리 가능 (2) Spring Cloud Kubernetes 
-
-- 사용법: `build.gradle`에서 spring-cloud-starter 삭제 X > `bootstrap.yml` 생성 > `bootstrap-kubernetes.yml` 생성
-
-### 2. 쿠버네티스에 배포
-
-1. 일반적
-
-- 각 마이크로서비스를 하나 배포할 때에는 deployment, pod, service, secret, configma, sa, role 등 여러 서비스를 묶은 manifest 파일로 관리
-
-2. Helm으로 패키징
-
-- 리소스와 관련된 manifest 파일을 Helm 템플릿 변수를 적용시켜 템플릿 파일로 만듬
-
-- 실제 application에 배포할 때에는 바인딩해야하므로 바인딩할 변수를 value.yml로 관리. 각 마이크로서비스마다 value.yml 파일 하나씩 존재해야함
-
-- 이때 config는 배포할 때에 참조하는 것이 아니라 배포가 끝난 후 로드할 때 참조
-
-![Alt text](image-11.png)
-
-- 배포 명령어: `helm install [values.yml 파일명에서 .yml 제거한 값] [k8s api] -f [values.yml파일명] -n [네임스페이스명]`
-
-ex. `helm install order-internal shopby-api -f order-internal.yml -n order`
-
-- 변경사항 적용 명령어: `helm upgrade -i [values.yml 파일명에서 .yml 제거한 값] [k8s api] -f [values.yml파일명] -n [네임스페이스명]`
-
-![Alt text](image-12.png)
-
-<https://forward.nhn.com/2022/sessions/31>
-
-## 실제 변환
-
-1. config-server
-
-IntelliJ 해당 프로젝트에 `bootstrap.yml` 추가
-```
-spring:
-  application:
-    name: config-service
-  cloud:
-    config:
-      uri: http://config-server.com:8888
-      enabled: true
-    kubernetes:
-      enabled: false
-```
-
-k8s에 `bootstrap-kubernetes.yml` 추가
-```
-spring:
-  profiles:
-  cloud:
-    config:
-      enabled: false
-    kubernetes:
-      enabled: true
-      loadbalancer:
-        enabled: true
-        mode: service
-      discovery:
-        enabled: true
-        all-namespaces: true
-      config:
-       enabled: tru
-```
-위 X
-
-## 참고
-
-<https://happycloud-lee.tistory.com/210>
-
-## EC2 생성
-
-1. EC2 인스턴스 시작
-
-- 아래 블로그 참고
-
-- AMI로 `Ubuntu` 선택
-
-- 인스턴스 유형: t2.micro
-
-- 키페어 생성
-
-  - 키페어 이름: cowork
-  - 유형: RSA
-  - 프라이빗 키 파일 형식: .pem
-
-  - 해당 키페어는 다시 받을 수 없기 때문에 안전하게 보관할 것 ! => 경로: C:/Backend/Cowork_Cloud
-
-
-- 보안그룹과 탄력적 IP 진행 X
-
-<https://velog.io/@kyj311/AWS-EC2-%EC%95%8C%EC%95%84%EB%B3%B4%EA%B8%B0>
-
-2. 보안 그룹 설정
-
-- EC2> 인스턴스> 인스턴스 ID 클릭>보안의 보안그룹 > 인바운드 규칙에 `자신의 IP주소` 삽입
-
-![Alt text](image-16.png)
-
-3. git bash로 접속
-
-- 키페어(.pem)를 C:/Backend/Cowork_Cloud로 복사
-
-- 실행 명령어
-```
-chmod 400 [.pem 경로]
-ssh -i [.pem 경로] [AMI로 선택한 것]:[퍼블릭 IPv4 주소]
-```
-
-```
-chmod 400 C:/Backend/Cowork_Cloud
-ssh -i C:/Backend/Cowork_Cloud ubuntu@54.180.26.28 # 처음에만 실행
-#확인 메세지 발생 (아래)
-ssh -i C:/Backend/Cowork_Cloud/cowork.pem ubuntu@54.180.26.28 # 이후로 계속 해당 명령어로 실행
-```
-
-- 확인메세지
-```
-The authenticity of host '54.180.26.28 (54.180.26.28)' can't be established.
-ED25519 key fingerprint is SHA256:DHEmHLTIrHD7sxp8sdxOObB2Umj9PPwr+SDKAFO9chI.
-This key is not known by any other names.
-Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
-Warning: Permanently added '54.180.26.28' (ED25519) to the list of known hosts.
-Load key "C:/Backend/Cowork_Cloud": Is a directory
-ubuntu@54.180.26.28: Permission denied (publickey).
-
-```
-![Alt text](image-17.png)
-
-
-- 접속 성공시
-
-![Alt text](image-18.png)
-
-## VM에 도커&쿠버네티스 설치
-
-```
-
 sudo apt remove docker docker.io containerd runc
-
 
 sudo vim /etc/fstab
 /swapfile swap swap defaults 0 0 // 최하단 수정
@@ -472,3 +111,619 @@ rm /etc/kubernetes/manifests/kube-controller-manager.yaml
 rm /etc/kubernetes/manifests/kube-scheduler.yaml 
 rm /etc/kubernetes/manifests/etcd.yaml*/
 ```
+
+## VM에 docker image를 기반으로 배포 -2
+
+### Docker Image 생성
+
+`config-service`
+`discovery-service`
+`apigateway-service`
+`user-service`
+`work-service`
+`file-service`
+`calendar-service`
+`chat-service`
+`contribution-service`
+
+### Kubernetes resource 생성
+
+`rabbitmq.yml`
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:management
+          ports:
+            - containerPort: 5672  # RabbitMQ AMQP 포트
+            - containerPort: 15672 # RabbitMQ 관리 웹 인터페이스 포트
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              value: guest  # RabbitMQ 사용자 이름
+            - name: RABBITMQ_DEFAULT_PASS
+              value: guest  # RabbitMQ 비밀번호
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-service
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+    - name: management
+      port: 15672
+      targetPort: 15672
+  type: NodePort  # NodePort 서비스 유형
+```
+
+`config-service.yml`
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-service
+  template:
+    metadata:
+      labels:
+        app: config-service
+    spec:
+      containers:
+        - name: config-service
+          image: yoonhye/config-service:1.0
+          ports:
+            - containerPort: 8888
+          env:
+            - name: SPRING_RABBITMQ_HOST
+              value: rabbitmq  # RabbitMQ 호스트 이름
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-service
+spec:
+  selector:
+    app: config-service
+  ports:
+    - protocol: TCP
+      port: 8888
+      targetPort: 8888
+  type: NodePort
+```
+
+`discovery-service.yml`
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: discovery-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discovery-service
+  template:
+    metadata:
+      labels:
+        app: discovery-service
+    spec:
+      containers:
+        - name: discovery-service
+          image: yoonhye/discovery-service:1.0
+          ports:
+            - containerPort: 8761  # 애플리케이션이 사용하는 포트
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discovery-service
+spec:
+  selector:
+    app: discovery-service  # Deployment에서 사용한 레이블과 일치해야 함
+  ports:
+    - protocol: TCP
+      port: 8761  # 서비스가 노출할 포트
+      targetPort: 8761  # Pod 내에서 애플리케이션이 실행 중인 포트
+  type: NodePort
+```
+
+`apigateway-service.yml`
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: apigateway-service
+spec:
+  replicas: 1 # 원하는 레플리카 수로 설정
+  selector:
+    matchLabels:
+      app: apigateway-service
+  template:
+    metadata:
+      labels:
+        app: apigateway-service
+    spec:
+      containers:
+        - name: apigateway-service
+          image: parkseoyeon/apigateway-service:3.0
+          ports:
+            - containerPort: 8001
+          env:
+            - name: spring.cloud.config.uri
+              value: http://config-service:8888
+            - name: spring.rabbitmq.host
+              value: rabbitmq
+            - name: eureka.client.service-url.defaultZone
+              value: http://discovery-service:8761/eureka/
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apigateway-service
+spec:
+  type: NodePort # NodePort 서비스 유형 사용
+  selector:
+    app: apigateway-service
+  ports:
+    - protocol: TCP
+      port: 8001 # 외부에서 접근할 포트 설정
+      targetPort: 8001 # 컨테이너 내부 포트 설정
+```
+
+`user-service.yml`
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: user-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: yoonhye/user-service:2.0
+          ports:
+            - containerPort: 5000
+          env:
+            - name: spring.cloud.config.uri
+              value: http://config-service:8888
+            - name: spring.rabbitmq.host
+              value: rabbitmq
+            - name: eureka.client.service-url.defaultZone
+              value: http://discovery-service:8761/eureka
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+spec:
+  selector:
+    app: user-service
+  ports:
+    - protocol: TCP
+      port: 5000
+      #    targetPort: 5000
+  clusterIP: None
+```
+
+`dashboard-service.yml`
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dashboard-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard-service
+  template:
+    metadata:
+      labels:
+        app: dashboard-service
+    spec:
+      containers:
+        - name: dashboard-service
+          image: yoonhye/dashboard-service:1.0
+          ports:
+            - containerPort: 5004
+          env:
+            - name: spring.cloud.config.uri
+              value: http://config-service:8888
+            - name: spring.rabbitmq.host
+              value: rabbitmq
+            - name: eureka.client.service-url.defaultZone
+              value: http://discovery-service:8761/eureka
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+spec:
+  selector:
+    app: dashboard-service
+  ports:
+    - protocol: TCP
+      port: 5004
+  clusterIP: None
+```
+
+`work-service.yml`
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: work-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: work-service
+  template:
+    metadata:
+      labels:
+        app: work-service
+    spec:
+      containers:
+        - name: work-service
+          image: yoonhye/work-service:1.0
+          ports:
+            - containerPort: 5000
+          env:
+            - name: EUREKA_SERVER
+              value: discovery-service
+            - name: INSTANCE_ID
+              valueFrom:
+                fieldRef:
+                        fieldPath: metadata.name
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: work-service
+spec:
+  selector:
+    app: work-service
+  ports:
+    - protocol: TCP
+      port: 5000
+      #    targetPort: 5000
+  clusterIP: None
+```
+
+`board-service.yml`
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: board-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: board-service
+  template:
+    metadata:
+      labels:
+        app: board-service
+    spec:
+      nodeName: co-work-server-3
+      containers:
+        - name: board-service
+          image: yoonhye/board-service:1.0
+          ports:
+            - containerPort: 5002
+          volumeMounts:
+            - name: web-content
+              mountPath: /src/main/resources/static/files
+          env:
+            - name: spring.cloud.config.uri
+              value: http://config-service:8888
+            - name: spring.rabbitmq.host
+              value: rabbitmq
+            - name: eureka.client.service-url.defaultZone
+              value: http://discovery-service:8761/eureka
+      volumes:
+        - name: web-content
+          hostPath:
+            type: DirectoryOrCreate
+            path: /web_contents
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: board-service
+spec:
+  selector:
+    app: board-service
+  ports:
+    - protocol: TCP
+      port: 5002
+      targetPort: 5002
+```
+
+`calendar-service.yml`
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: calendar-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calendar-service
+  template:
+    metadata:
+      labels:
+        app: calendar-service
+    spec:
+      containers:
+        - name: calendar-service
+          image: parkseoyeon/calendar-service:4.0
+          ports:
+            - containerPort: 81
+          env:
+            - name: spring.cloud.config.uri
+              value: http://config-service:8888
+            - name: spring.rabbitmq.host
+              value: rabbitmq
+            - name: eureka.client.service-url.defaultZone
+              value: http://discovery-service:8761/eureka
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: calendar-service
+  name: calendar-service
+spec:
+  selector:
+    app: calendar-service
+  ports:
+    - protocol: TCP
+      port: 5001
+      targetPort: 81
+```
+
+![Alt text](image-19.png)
+
+### Front는 다른 VM에 nginx로 배포
+
+
+
+### 참고
+
+<https://happycloud-lee.tistory.com/210>
+
+## (VM이 아닌) 로컬에서 Kubernetes 실행 
+
+1. docker desktop에서 kubernetes 설치
+
+![Alt text](image-7.png)
+
+2. Powershell
+
+- `kubectl version`으로 설치 확인
+
+- 설치되어있지 않은 경우 설치
+
+![Alt text](image-8.png)
+
+3. vim 설치
+
+<https://velog.io/@deadkim/windows-vim-windows%EC%97%90%EC%84%9C%EC%9D%98-vim-%EC%82%AC%EC%9A%A9>
+
+4. yaml 파일 생성
+
+`discovery.yml`
+![Alt text](image-9.png)
+
+`config.yml`
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-service
+  template:
+    metadata:
+      labels:
+        app: config-service
+    spec:
+      containers:
+        - name: config-service
+          image: parkseoyeon/config-service:1.0
+          ports:
+            - containerPort: 8888
+---
+apiVersion: v1
+kine: Service
+metadata:
+  name: config-service
+spec:
+  type: ClusterIP
+  selector:
+    app: config-service
+  ports:
+    - port: 90
+      targetPort: 8888
+```
+
+## MSA 쿠버네티스 배포 참고 영상
+
+### 1. 쿠버네티스 전환 준비
+
+1. 샵바이 마이크로서비스 기존 구조
+
+- Spring Cloud 기반으로 구현
+
+- 마이크로서비스 간의 내부 통신 가능 => Spring Cloud OpenFeign = `Service Discovery`와 Load Balancer 필요
+
+- 모든 API의 트래픽을 가장 먼저 받아 적절히 라우팅하는 `API Gateway`
+
+- 마이크로서비스의 모든 properties를 포함하는 `Config Server`
+
+|Dependency|VM(On-Prem)|Kubernetes|
+|:--:|:--:|:--:|
+|API Gateway|Spring Cloud Gateway|Ingress|
+|내부 통신|Spring Cloud OpenFeign|Spring Cloud OpenFeign|
+|서비스 디스커버리|Spring Cloud Zookeeper|-|
+|서비스 레지스트리|Zookeeper|Service|
+|프로퍼티 파일 관리|Spring Cloud Config|ConfigMap, Secret|
+|MySQL, Mongo, Kafka, Redis 등|사용 중|그대로 사용|
+
+
+2. 서비스 레지스트리
+
+- 쿠버네티스가 디스커버리와 로드밸런서의 역할 제공
+
+- 클러스터 내의 모든 pod가 service에 접근할 수 있도록 별도의 DNS 제공
+
+- Discovery Client 대신 `Kubernetes DiscoveryClient` 사용 
+ 
+- dependency만 변경하면 사용 가능: Zookeeper DiscoveryClient -> Kubernetes DiscoveryClient
+
+=> 내부 통신/서비스 디스커버리/서비스 레지스트리 사용 가능
+
+3. Spring Cloud Gateway
+
+- dependency만 변경하면 사용 가능: Zookeeper DiscoveryClient -> Kubernetes DiscoveryClient
+
+4. API Gateway
+
+- Spring Cloud Gateway 사용할지 VS Ingress 사용할지
+
+- Spring Cloud Gateway 그대로 사용
+
+5. Spring Cloud Config
+
+- Kubernetes 사용 시 (1) ConfigMap 또는 Secret으로 설정 파일 관리 가능 (2) Spring Cloud Kubernetes 
+
+- 사용법: `build.gradle`에서 spring-cloud-starter 삭제 X > `bootstrap.yml` 생성 > `bootstrap-kubernetes.yml` 생성
+
+### 2. 쿠버네티스에 배포
+
+1. 일반적
+
+- 각 마이크로서비스를 하나 배포할 때에는 deployment, pod, service, secret, configma, sa, role 등 여러 서비스를 묶은 manifest 파일로 관리
+
+2. Helm으로 패키징
+
+- 리소스와 관련된 manifest 파일을 Helm 템플릿 변수를 적용시켜 템플릿 파일로 만듬
+
+- 실제 application에 배포할 때에는 바인딩해야하므로 바인딩할 변수를 value.yml로 관리. 각 마이크로서비스마다 value.yml 파일 하나씩 존재해야함
+
+- 이때 config는 배포할 때에 참조하는 것이 아니라 배포가 끝난 후 로드할 때 참조
+
+![Alt text](image-11.png)
+
+- 배포 명령어: `helm install [values.yml 파일명에서 .yml 제거한 값] [k8s api] -f [values.yml파일명] -n [네임스페이스명]`
+
+ex. `helm install order-internal shopby-api -f order-internal.yml -n order`
+
+- 변경사항 적용 명령어: `helm upgrade -i [values.yml 파일명에서 .yml 제거한 값] [k8s api] -f [values.yml파일명] -n [네임스페이스명]`
+
+![Alt text](image-12.png)
+
+<https://forward.nhn.com/2022/sessions/31>
+
+## EC2 생성
+
+1. EC2 인스턴스 시작
+
+- 아래 블로그 참고
+
+- AMI로 `Ubuntu` 선택
+
+- 인스턴스 유형: t2.micro
+
+- 키페어 생성
+
+  - 키페어 이름: cowork
+  - 유형: RSA
+  - 프라이빗 키 파일 형식: .pem
+
+  - 해당 키페어는 다시 받을 수 없기 때문에 안전하게 보관할 것 ! => 경로: C:/Backend/Cowork_Cloud
+
+
+- 보안그룹과 탄력적 IP 진행 X
+
+<https://velog.io/@kyj311/AWS-EC2-%EC%95%8C%EC%95%84%EB%B3%B4%EA%B8%B0>
+
+2. 보안 그룹 설정
+
+- EC2> 인스턴스> 인스턴스 ID 클릭>보안의 보안그룹 > 인바운드 규칙에 `자신의 IP주소` 삽입
+
+![Alt text](image-16.png)
+
+3. git bash로 접속
+
+- 키페어(.pem)를 C:/Backend/Cowork_Cloud로 복사
+
+- 실행 명령어
+```
+chmod 400 [.pem 경로]
+ssh -i [.pem 경로] [AMI로 선택한 것]:[퍼블릭 IPv4 주소]
+```
+
+```
+chmod 400 C:/Backend/Cowork_Cloud
+ssh -i C:/Backend/Cowork_Cloud ubuntu@54.180.26.28 # 처음에만 실행
+#확인 메세지 발생 (아래)
+ssh -i C:/Backend/Cowork_Cloud/cowork.pem ubuntu@54.180.26.28 # 이후로 계속 해당 명령어로 실행
+```
+
+- 확인메세지
+```
+The authenticity of host '54.180.26.28 (54.180.26.28)' can't be established.
+ED25519 key fingerprint is SHA256:DHEmHLTIrHD7sxp8sdxOObB2Umj9PPwr+SDKAFO9chI.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '54.180.26.28' (ED25519) to the list of known hosts.
+Load key "C:/Backend/Cowork_Cloud": Is a directory
+ubuntu@54.180.26.28: Permission denied (publickey).
+
+```
+![Alt text](image-17.png)
+
+
+- 접속 성공시
+
+![Alt text](image-18.png)
