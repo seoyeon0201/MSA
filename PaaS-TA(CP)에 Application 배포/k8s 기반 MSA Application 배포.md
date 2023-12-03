@@ -110,10 +110,103 @@ spec:
 
 ## 4. Docker Image 
 
+### 1. Image 저장소 생성
 
-## 5. Kubernetes 배포 - YAML
+- 플레이파크 포탈에서 `Container Platform Pipeline` 선택 > 서비스 이름 입력 후 생성
+![Alt text](image-3.png)
+- 플레이파크 포탈에서 (위에서 생성한 pipeline 말고) 기존에 존재한 서비스의 대시보드 클릭 
+
+- 아래 페이지의 Private Repository 접속
+
+![Alt text](image-4.png)
+
+    - `Harbor` 계정 자동 생성
+        - Username = 플레이파크 계정 id
+        - password = [USERNAME]-Harbor1
+
+- 접속 완료
+![Alt text](image-5.png)
+
+- Harbor Projects 생성
+    - NEW PROJECT 클릭 > 프로젝트 이름 입력
+    - 생성된 프로젝트명은 ${DIRECTORY_NAME}으로 사용
+
+### 2. Insecure-registries 설정
+
+- Harbor(이미지 저장소)의 URL 확인
+
+![Alt text](image-6.png)
+
+- Docker Desktop의 Settings > Docker Engine 선택
+    - 아래 코드 입력 후 Apply&Restart 
+    - ${IMAGE_REGISTRY_URL:PORT}는 직전에 확인한 URL과 port 사용
+```
+"insecure-registries": [
+    "${IMAGE_REGISTRY_URL:PORT}"
+]    
+```
+
+### 3. 이미지 저장소 로그인
+
+`docker login ${IMAGE_REGISTRY_URL}:30002 --username [이미지 저장소 ID] --password [이미지 저장소 password]`
+
+### 4. Dockerfile 작성
+
+1. 서비스의 Dockerfile `board`, `comment`, `ui`, `user`
+```
+FROM tomcat:9-jre8-alpine
+WORKDIR /usr/local/tomcat
+COPY server.xml ./conf
+RUN rm -rf ./webapps/*
+ARG JAR_FILE=*.war
+COPY ${JAR_FILE} ./webapps/edu-msa-board-1.0.0.war
+
+EXPOSE 28082
+```
+
+2. `zuul`
+```
+FROM openjdk:8-jdk-alpine
+ARG JAR_FILE=edu-msa-zuul-1.0.0.war
+COPY ${JAR_FILE} edu-msa-zuul-1.0.0.war
+COPY application.yml /application.yml
+ENTRYPOINT ["java","-jar","-Dspring.config.location=application.yml","/edu-msa-zuul-1.0.0.war"] #ENTRYPOINT란 컨테이너 실행시 수행되는 명령어 지정
+```
+
+### 5. Docker Image 생성을 위한 파일 구성
+
+1. 서비스의 Dockerfile `board`, `comment`, `ui`, `user`
+- `Dockerfile`을 작성한 경로에 앞에서 생성한 `war 파일`과 다운받은 `server.xml` 넣기
+
+2. `zuul`
+- `Dockerfile`을 작성한 경로에 앞에서 생성한 `war 파일`과 다운받은 `application.yml` 넣기
+
+### 6. Docker Image 생성 및 배포 
+
+1. docker image 빌드 `docker build --tag [생성할 이미지 이름]:[태그] [현재 위치]`
+- `docker build --tag edu-msa-board:latest .`
+
+2. docker image 태그 `docker tag [기존 이미지 이름] [이미지 저장소 URL:이미지 저장소 포트/경로 지정/새로운 이미지 이름]`
+- `docker tag edu-msa-board 45.248.73.57:5001/edu-msa-01/edu-msa-board`
+
+3. docker image 업로드 `docker push [이미지 저장소에 업로드할 이미지 이름]`
+- `docker push 45.248.73.57:5001/edu-msa-01/edu-msa-board`
+    - docker image가 이미지 저장소인 Harbor에 들어감
+
+## 5. Kubernetes 배포
+
+### 1. Secret 생성
+
+- 이미지에 대한 도커 레지스트리 접속 자격 증명 저장을 위한 시크릿 생성
+- `kubectl create secret docker-registry [SECRET NAME] --docker-server=[이미지 저장소 URL:이미지 저장소 port] --docker-username=[이미지 저장소 ID] --docker-password=[이미지 저장소 비밀번호]`
+    - `kubectl create secret docker-registry edu-msa-secret --docker-server=45.248.73.47:5001 --docker-username=admin --docker-password=admin`
+    - docker-username과 docker-password는 Harbor 접근시 사용한 username과 password 사용
+    - secret명을 edu-msa-secret으로 설정
+
+### 2. API YAML 파일
 
 1. `redis-msa-ui.yaml`
+- 가장 먼저 사용. DB 생성 전에 가장 먼저 생성
 ```
 apiVersion: v1
 kind: ConfigMap
@@ -185,6 +278,7 @@ spec:
 ```
 
 2. `mysql-msa-[board, comment, user].yaml`
+- DB 섹션에서 이미 사용
 ```
 apiVersion: apps/v1
 kind: Deployment
@@ -228,6 +322,115 @@ spec:
         app: mysql-board
 ```
 
+3. `edu-msa-[board,comment,ui,user].yaml`
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: edu-msa-board
+    labels:
+        app: board-msa
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: board-msa
+    template:
+        metadata:
+            labels:
+                app: board-msa
+        spec:
+            containers:
+              - name: board-msa
+                image: [이미지 저장소 URL]:[이미지 저장소 port]/[경로]/[이미지명]:[태그]  #${IMAGE_REGISTRY_URL}:xxxx/${DIRECTORY_NAME}/${IMAGE_NAME}:latest
+                imagePullPolicy: Always
+                ports:
+                  - containerPort: 28082
+            imagePullSecrets:
+              - name: edu-msa-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: edu-msa-board
+    labels:
+        app: board-msa
+spec:
+    ports:
+        - nodePort: ${EDU_MSA_BOARD}    #이전에 서비스(board,comment,...)별로 할당한 외부 포트
+          port: 28082
+          protocol: TCP
+          targetPort: 28082
+    selector:
+        app: board-msa
+    type: NodePort
+```
+
+4. `edu-msa-zuul.yaml`
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: edu-msa-zuul
+    labels:
+        app: zuul-msa
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: zuul-msa
+    template:
+        metadata:
+            labels:
+                app: zuul-msa
+        spec:
+            containers:
+              - name: zuul-msa
+                images: ${IMAGE_REGISTRY_URL}:xxxxx/${DIRECTORY_NAME}/${IMAGE_NAME}:latest
+                imagePullPolicy: Always
+                ports:
+                  - containerPort: 28081
+              env:
+              - name: BOARD_MSA_URL
+                value: "edu-msa-board.${NAMESPACE}.svc.cluster.local:28082"
+              - name: COMMENT_MSA_URL
+                value: "edu-msa-comment.${NAMESPACE}.svc.cluster.local:28083"
+              - name: USER_MSA_URL
+                value: "edu-msa-user.${NAMESPACE}.svc.cluster.local:28084"
+            imagePullSecrets:
+              - name: edu-msa-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: edu-msa-zuul
+    labels:
+        app: zuul-msa
+spec:
+    ports:
+      - nodePort: ${EDU_MSA_ZUUL}
+        port: 28081
+        protocol: TCP
+        targetPort: 28081
+    selector:
+        app: zuul-msa
+    type: NodePort
+```
+
+### 3. 배포
+
+`kubectl apply -f [APPLICATION_YAML_NAME].yaml`
+`kubectl get pods`
+
+## 6. Application 배포 확인
+
+1. Kubernetes URL 확인
+- 플랫폼의 Access에서 `CP_SERVICE_CLUSTER_SERVER`의 port 앞까지
+2. UI port 확인
+- `kubectl get services`에서 edu-msa-ui의 port 확인 => NodePort확인. 명령어 실행 후 ":" 뒤 숫자
+3. Application 포털 접속
+- `http://[Kubernetes URL]:[외부 포트 번호]/user/login`
+    - 직전에 Kubernetes URL과 외부 포트 번호 확인함
 
 ## 참고영상
 <https://www.youtube.com/watch?v=A1euGLsY4qE&list=PL-AoIAa-OgNncmEDFYsy0NAGvFu15zJb1&index=27>
