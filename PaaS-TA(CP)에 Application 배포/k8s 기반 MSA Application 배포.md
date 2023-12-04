@@ -4,11 +4,11 @@
 
 1. Architecture 구성도
 
-![Alt text](image.png)
+![Alt text](Img/image.png)
 
 2. Port 번호
 
-![Alt text](image-1.png)
+![Alt text](Img/image-1.png)
 
 ## 2. DB 환경 구축
 
@@ -108,7 +108,7 @@ spec:
 
 - properties 경로는 src/main/resources/properties/[FILE NAME]
 
-![Alt text](image-2.png)
+![Alt text](Img/image-2.png)
 
 - 내 서비스의 경우 config 파일로 나뉘어 git에 별도로 올라가있기에 해당 단계 할 필요없이 git의 코드 수정하면 됨
 
@@ -117,19 +117,19 @@ spec:
 ### 1. Image 저장소 생성
 
 - 플레이파크 포탈에서 `Container Platform Pipeline` 선택 > 서비스 이름 입력 후 생성
-  ![Alt text](image-3.png)
+![Alt text](Img/image-3.png)
 - 플레이파크 포탈에서 (위에서 생성한 pipeline 말고) 기존에 존재한 서비스의 대시보드 클릭
 
 - 아래 페이지의 Private Repository 접속
 
-![Alt text](image-4.png)
+![Alt text](Img/image-4.png)
 
     - `Harbor` 계정 자동 생성
         - Username = 플레이파크 계정 id
         - password = [USERNAME]-Harbor1
 
 - 접속 완료
-  ![Alt text](image-5.png)
+  ![Alt text](Img/image-5.png)
 
 - Harbor Projects 생성
   - NEW PROJECT 클릭 > 프로젝트 이름 입력
@@ -139,7 +139,7 @@ spec:
 
 - Harbor(이미지 저장소)의 URL 확인
 
-![Alt text](image-6.png)
+![Alt text](Img/image-6.png)
 
 - Docker Desktop의 Settings > Docker Engine 선택
   - 아래 코드 입력 후 Apply&Restart
@@ -459,20 +459,20 @@ spec:
 
 - 플랫폼에서 Pipeline 생성 > Project 생성
 - Harbor에서 URL과 port 확인
-![Alt text](image-9.png)
+![Alt text](Img/image-9.png)
 - Docker Desktop
-![Alt text](image-7.png)
+![Alt text](Img/image-7.png)
 - docker login `docker login 115.68.198.240:30002 --username [HARBOR USERNAME] --password [HARBOR PASSWORD]`
     - Harbor username은 플랫폼 id와 동일하고 password는 username에 -Harbor1을 붙인 것
 - 기존에 만들었던 image 사용해 docker tag + docker push
     - `docker tag [IMAGE ID] [HARBOR URL]:[HARBOR PORT]/[HARBOR PROJECT NAME]/[IMAGE NAME]` 
     - `docker push [HARBOR URL]:[HARBOR PORT]/[HARBOR PROJECT NAME]/[IMAGE NAME]`
-![Alt text](image-10.png)
+![Alt text](Img/image-10.png)
 
 - secret 생성
     - `kubectl create secret docker-registry [SECRET NAME] --docker-server=[HARBOR URL]:[HARBOR PORT] --docker-username=[HARBOR USERNAME] --password=[HARBOR PASSWORD]`
     - secret 이름: cowork-msa-secret
-![Alt text](image-11.png)
+![Alt text](Img/image-11.png)
 
 - yaml 파일 수정 후 `kubectl apply -f [YAML NAME].yaml`
     - `image` 수정
@@ -504,6 +504,8 @@ spec:
               value: rabbitmq
             - name: eureka.client.service-url.defaultZone
               value: http://discovery-service:8761/eureka
+      imagePullSecrets:
+        - name: cowork-msa-secret   
 ---
 apiVersion: v1
 kind: Service
@@ -515,7 +517,6 @@ spec:
   ports:
     - protocol: TCP
       port: 5004
-  clusterIP: None
 ```
 
 2. `calendar.yaml`
@@ -546,6 +547,8 @@ spec:
               value: rabbitmq
             - name: eureka.client.service-url.defaultZone
               value: http://discovery-service:8761/eureka
+      imagePullSecrets:
+        - name: cowork-msa-secret
 ---
 apiVersion: v1
 kind: Service
@@ -562,11 +565,11 @@ spec:
       targetPort: 81
 ```
 
-![Alt text](image-12.png)
+![Alt text](Img/image-12.png)
 
-![Alt text](image-13.png)
+![Alt text](Img/image-13.png)
 
-![Alt text](image-14.png)
+![Alt text](Img/image-14.png)
 
 - 접속 확인
     - dashboard의 경우 브라우저에 `115.68.198.240:[frontend port 번호]`

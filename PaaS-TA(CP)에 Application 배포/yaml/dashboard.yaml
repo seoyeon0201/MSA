@@ -24,6 +24,8 @@ spec:
               value: rabbitmq
             - name: eureka.client.service-url.defaultZone
               value: http://discovery-service:8761/eureka
+      imagePullSecrets:
+        - name: cowork-msa-secret
 ---
 apiVersion: v1
 kind: Service
@@ -35,4 +37,3 @@ spec:
   ports:
     - protocol: TCP
       port: 5004
-  clusterIP: None

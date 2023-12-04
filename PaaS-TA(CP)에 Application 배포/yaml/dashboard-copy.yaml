@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: calendar-service
+  name: dashboard-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: calendar-service
+      app: dashboard-service
   template:
     metadata:
       labels:
-        app: calendar-service
+        app: dashboard-service
     spec:
       containers:
-        - name: calendar-service
-          image: 115.68.198.240:30002/cowork-msa/calendar-service:latest
+        - name: dashboard-service
+          image: 115.68.198.240:30002/cowork-msa/dashboard-service:latest
           ports:
-            - containerPort: 81
+            - containerPort: 8771
           env:
             - name: spring.cloud.config.uri
               value: http://config-service:8888
@@ -30,13 +30,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    app: calendar-service
-  name: calendar-service
+  name: dashboard-service
 spec:
   selector:
-    app: calendar-service
+    app: dashboard-service
   ports:
     - protocol: TCP
-      port: 5001
-      targetPort: 81
+      port: 8771
+      targetPort: 8771
+      nodePort: 30040
+  type: NodePort

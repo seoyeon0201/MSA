@@ -16,7 +16,7 @@ spec:
         - name: calendar-service
           image: 115.68.198.240:30002/cowork-msa/calendar-service:latest
           ports:
-            - containerPort: 81
+            - containerPort: 8772
           env:
             - name: spring.cloud.config.uri
               value: http://config-service:8888
@@ -30,13 +30,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    app: calendar-service
   name: calendar-service
 spec:
   selector:
     app: calendar-service
   ports:
     - protocol: TCP
-      port: 5001
-      targetPort: 81
+      port: 8772
+      targetPort: 8772
+      nodePort: 30050
+  type: NodePort
