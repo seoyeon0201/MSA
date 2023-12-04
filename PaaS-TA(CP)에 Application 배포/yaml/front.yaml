@@ -35,11 +35,11 @@ spec:
           #     cpu: "0.1"
           resources:
             limits:
-              cpu: "0.3"
-              memory: 2000Mi
+              cpu: "70m"
+              memory: 500Mi
             requests:
-              cpu: "0.2"
-              memory: 1500Mi
+              cpu: "70m"
+              memory: 500Mi
           volumeMounts: #컨테이너에 볼륨마운트할 위치 설정
             - mountPath: /redis-master-data
               name: data

@@ -476,6 +476,7 @@ spec:
 
 - yaml 파일 수정 후 `kubectl apply -f [YAML NAME].yaml`
     - `image` 수정
+    - 동일 계층의 yaml 폴더에 정확한 yaml 파일 존재
 1. `dashboard.yaml`
 ```
 apiVersion: apps/v1
@@ -483,7 +484,7 @@ kind: StatefulSet
 metadata:
   name: dashboard-service
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: dashboard-service
@@ -496,7 +497,7 @@ spec:
         - name: dashboard-service
           image: 115.68.198.240:30002/cowork-msa/dashboard-service:latest
           ports:
-            - containerPort: 5004
+            - containerPort: 8771
           env:
             - name: spring.cloud.config.uri
               value: http://config-service:8888
@@ -504,8 +505,15 @@ spec:
               value: rabbitmq
             - name: eureka.client.service-url.defaultZone
               value: http://discovery-service:8761/eureka
+          resources:
+            limits:
+              cpu: "70m"
+              memory: 500Mi
+            requests:
+              cpu: "70m"
+              memory: 500Mi
       imagePullSecrets:
-        - name: cowork-msa-secret   
+        - name: cowork-msa-secret
 ---
 apiVersion: v1
 kind: Service
@@ -516,7 +524,11 @@ spec:
     app: dashboard-service
   ports:
     - protocol: TCP
-      port: 5004
+      port: 8771
+      targetPort: 8771
+      nodePort: 30040
+  type: NodePort
+
 ```
 
 2. `calendar.yaml`
@@ -526,7 +538,7 @@ kind: StatefulSet
 metadata:
   name: calendar-service
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: calendar-service
@@ -539,7 +551,7 @@ spec:
         - name: calendar-service
           image: 115.68.198.240:30002/cowork-msa/calendar-service:latest
           ports:
-            - containerPort: 81
+            - containerPort: 8772
           env:
             - name: spring.cloud.config.uri
               value: http://config-service:8888
@@ -547,22 +559,30 @@ spec:
               value: rabbitmq
             - name: eureka.client.service-url.defaultZone
               value: http://discovery-service:8761/eureka
+          resources:
+            limits:
+              cpu: "70m"
+              memory: 500Mi
+            requests:
+              cpu: "70m"
+              memory: 500Mi
       imagePullSecrets:
         - name: cowork-msa-secret
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    app: calendar-service
   name: calendar-service
 spec:
   selector:
     app: calendar-service
   ports:
     - protocol: TCP
-      port: 5001
-      targetPort: 81
+      port: 8772
+      targetPort: 8772
+      nodePort: 30050
+  type: NodePort
+
 ```
 
 ![Alt text](Img/image-12.png)
