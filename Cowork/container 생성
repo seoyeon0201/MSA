@@ -795,6 +795,49 @@ eureka:
 
 ![Alt text](image-15.png)
 
+## dashboard-service:4.0 Docker image
+
+- git commit `76255a8` 다운로드 후 application 수정
+
+`application.yml`
+```
+server:
+  #port: 0
+  port: 5004
+
+spring:
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+  application:
+    name: dashboard-service
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+#logging:
+#  level:
+#    com.example.userservice.client: DEBUG
+
+eureka:
+  instance:
+    hostname: dashboard-service
+    #instance-id: ${spring.cloud.client.hostname}:${spring.application.instance_id:${random.value}}
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+```
+
+
 ## apigateway-service:2.0 Docker image
 
 `eureka.instance.hostname: gateway-service`로 설정
