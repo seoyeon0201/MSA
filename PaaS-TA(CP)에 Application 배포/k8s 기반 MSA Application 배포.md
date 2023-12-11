@@ -592,8 +592,10 @@ spec:
 ![Alt text](Img/image-14.png)
 
 - 접속 확인
-    - dashboard의 경우 브라우저에 `115.68.198.240:[frontend port 번호]`
-
+    - front의 경우 브라우저에 `115.68.198.240:[frontend port 번호]`
+    - 백엔드 서비스의 경우 브라우저에 `http://115.68.198.240:[api gateway port번호]/[원하는 서비스 URL]`
+      - `http://115.68.198.240:30537/dashboard-service/dashboard/professor/4`
+      - kpaas에서는 clusterIP port로 확인할 수 없음
 ## 참고영상
 
 <https://www.youtube.com/watch?v=A1euGLsY4qE&list=PL-AoIAa-OgNncmEDFYsy0NAGvFu15zJb1&index=27>
