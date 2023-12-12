@@ -127,13 +127,111 @@ npm run serve
 
 ## 5. EC2 인스턴스의 로드 밸런싱을 위한 타겟 그룹을 생성
 
-1. 
+1. 개념
 
+- Load Balancer는 요청을 여러 서버로 분산시키기 위해 사용하는 기술로, target group을 여러 개 생성하고 들어오는 요청을 특정 알고리즘에 따라 각 target group에 분산시켜 전송
+
+- 구현하고자 하는 것
+    - target group 1개
+    - HTTPS 요청 -> HTTPS를 거친 후 Load Balancing을 통해 본래 사용하던 HTTP port(target group)로 요청
+    - HTTP 요청 -> 위의 HTTPS로 redirection 
+        - 이때 HTTP와 HTTPS는 리스너에서 캐치하고 HTTP로의 요청을 redirection할 때 리스너 규칙 사용
+
+2. 준비사항
+
+- 네트워크는 연결할 EC2의 설정을 따를 것. ex. VPC
+- 보안그룹은 연결할 EC2의 설정을 따를 것
+- 본인의 웹 서버에서 사용하는 port 번호 사용할 것 => 8080
+
+### 1. 보안그룹 수정
+
+1. EC2에서 사용하는 보안그룹 수정
+
+2. EC2 > 보안 > 보안그룹 선택
+
+- "인바운드 규칙 편집" 선택
+- (웹 서버에서 사용 중인 port 번호인) `8080`, `443`번 port에 대해 Anywhere-IPv4, Anywhere-IPv6 등록
+    - Anywhere-IPv4, Anywhere-IPv6은 `0.0.0.0/0`과 `::/0` 의미
+    - HTTP, HTTPS의 모든 요청을 열겠다는 의미
+
+![Alt text](image-30.png)
+    
+### 2. Target Group 생성
+
+1. EC2 메뉴 하단에 "대상 그룹" 클릭 > `Target Group` 생성
+
+- target type은 Instance
+- target group name에는 적당한 이름 설정. `[이름]-lb-tg`로 하면 loadbalancer를 위한 target group임을 알 수 있음
+- Protocol은 HTTP 그대로 두고 Port는 8080
+- VPC는 EC2와 동일하게 설정. EC2에서 default VPC로 설정되어있으면 default 그대로
+
+2. target group 등록
+
+- 사용할 instance 체크 후 port 번호 확인하고 "Include as pending below" 클릭
+
+![Alt text](image-32.png)
+
+3. target group이 존재하면 "target group 생성" 선택
 
 ## 6. 로드 밸런서(Load Balancer)로 리다이렉트 규칙을 설정하고(http 요청을 https로 리다이렉트)
 
+### 1. Load Balancer 생성
+
+1. "Load Balancer" 클릭 > "Create load balancer"
+
+- Application Load Balancer (ALB)로 생성
+- Load balancer name은 "[load balancer name]-lb"
+- Network mapping에서 VPC는 `EC2가 사용하는 VPC`, Mapping은 `EC2의 Subnet`과 매핑
+    - EC2 대시보드에서 VPC ID를 통해 VPC 확인 가능하고, 서브넷을 통해 Subnet 확인 가능
+    - 이름 작성 시의 페이지에서 Scheme을 Internet-facing(인터넷 경계)으로 설정했기에 반드시 `Public Subnet`으로 매핑해야함
+- 보안 그룹은 EC2의 인스턴스와 동일하게 설정
+- Listener을 HTTP:8080, HTTPS:443으로 설정하고 Forward to에서 직전에 생성한 target group 설정
+- Secure listener settings에서 Default SSL/TLS certificate를 From ACM으로 이전에 생성한 인증서 적용
+- "Create load balancer" 선택
+
+![Alt text](image-31.png)
+
+### 2. 도메인 레코드 생성
+
+1. Route53을 통해 생성한 호스팅 영역에는 레코드 4개가 존재해야함 
+    - `A`, `NS`, `SOA`, `CNAME`
+    - 현재 단계에서는 A 레코드 생성
+
+2. Route53 > 호스팅 영역 대시보드에서 "레코드 생성" 클릭
+- 레코드 이름은 사용해도되고 안해도되지만 넘어가는 것으로 
+- 별칭 체크
+- 트래픽 라우팅 대상
+    - Application/Classic Load Balancer에 대한 별칭
+    - 아시아 태평양(서울) [ap-northeast-2]
+    - 이전에 생성한 `Load balancer` 지정
+
+### 3. Load Balancer Listener 규칙 추가
+
+1. Load balancer > Listener 
+- HTTPS:443과 HTTP:8080 확인 가능
+- HTTP:443에는 Default SSL cert 연결 가능
+
+2. HTTPS:443 Rules 편집
+- HTTPS:443 클릭 > Rules > "Manage rules"
+- IF `요청 시에만 라우팅`, THEN `1. 전달 대상을 target group`으로 설정 후 저장
+    - 요청 시 target group으로 100% 보내는 것 의미
+
+3. HTTP:8080 Rules 편집
+- HTTP:8080 클릭 > Rules > "Manage rules"
+- IF `호스트 헤더에 Route53도메인 이름(.com, .shop)` 넣고, THEN `1. 리디렉션 대상에 HTTPS 443` 설정 후 저장
+
+4. Load Balancer의 Listener 확인하면 Rules가 1,2 존재
+
 ## 7. 로드 밸런서의 Health check를 통과해 로드 밸런싱을 안전하게 유지 
 
+### 1. Health check
+
+1. EC2 좌측 메뉴의 Load balancing > 대상 그룹에서 "생성한 대상 그룹" 선택
+
+- 대상의 health status 확인 가능
+- health check 시 EC2 인스턴스 위에서 웹 서버가 구동되고 있어야 함
+
+2. ...
 
 #### 참고
 <https://woojin.tistory.com/93#google_vignette>
