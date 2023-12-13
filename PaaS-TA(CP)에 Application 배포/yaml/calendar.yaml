@@ -3,7 +3,7 @@ kind: StatefulSet
 metadata:
   name: calendar-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: calendar-service
@@ -16,7 +16,7 @@ spec:
         - name: calendar-service
           image: 115.68.198.240:30002/cowork-msa/calendar-service:latest
           ports:
-            - containerPort: 8772
+            - containerPort: 5003
           env:
             - name: spring.cloud.config.uri
               value: http://config-service:8888
@@ -24,13 +24,17 @@ spec:
               value: rabbitmq
             - name: eureka.client.service-url.defaultZone
               value: http://discovery-service:8761/eureka
+            - name: spring.rabbitmq.username
+              value: admin
+            - name: spring.rabbitmq.password
+              value: admin
           resources:
             limits:
-              cpu: "70m"
-              memory: 500Mi
+              cpu: "400m"
+              memory: 600Mi
             requests:
-              cpu: "70m"
-              memory: 500Mi
+              cpu: "400m"
+              memory: 600Mi
       imagePullSecrets:
         - name: cowork-msa-secret
 ---
@@ -43,7 +47,5 @@ spec:
     app: calendar-service
   ports:
     - protocol: TCP
-      port: 8772
-      targetPort: 8772
-      nodePort: 30050
-  type: NodePort
+      port: 5003
+      targetPort: 5003

@@ -31,23 +31,25 @@ ssh -i C:/Cloud/cowork-front.pem ubuntu@[퍼블릭 IPv4 주소]   #[퍼블릭 IP
 - 우분투에 `curl` 설치
 `sudo apt-get install -y curl`
 
-- node.js와 npm 설치
-```
-sudo apt update
-sudo apt install nodejs
-sudo apt-get install -y npm
-sudo npm install -g npm@6   #sudo apt install npm은 최신 버전이 설치되는데 7 version 이상은 오류 존재하므로 6으로 설치
+- node.js와 npm 설치 -NVM 사용
 
-npm install vue    #본 프로젝트에서 vue 사용하기에 설치
-npm install axios    #본 프로젝트에서 axios 사용하기에 설치
-
-#위 명령어만 했는데 버전 확인 안 되는 경우
-sudo apt-get update
-sudo apt-get install -y build-essential
-sudo apt-get install curl
-curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash --
-sudo apt-get install -y nodejs
 ```
+#NVM 설치
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
+nvm --version   #nvm 버전확인 
+
+##node&npm 설치
+nvm install 14.4.0
+```
+
+- **nvm not found 오류 해결**
+    - 1. `touch ~/.zshrc`로 파일 생성
+    - 2. `vi ~/.zshrc`로 들어가서 아래 코드 입력 후 `:wq`로 저장 종료
+    ```
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+    ```
+    - 3. `source ~/.zshrc` 로 스크립트 실행
 
 - 설치 확인
 ```
