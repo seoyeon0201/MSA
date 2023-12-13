@@ -28,9 +28,6 @@ ssh -i C:/Cloud/cowork-front.pem ubuntu@[퍼블릭 IPv4 주소]   #[퍼블릭 IP
 
 ### 1. npm 환경 구축
 
-- 우분투에 `curl` 설치
-`sudo apt-get install -y curl`
-
 - node.js와 npm 설치 -NVM 사용
 
 ```
